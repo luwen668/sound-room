@@ -94,6 +94,19 @@ body {
   backdrop-filter: blur(8px);
 }
 #mixer.open { transform: translate(-50%, 0); }
+/* 拖把手 + 收起按钮（面板打开时会盖住底部开关，所以面板自带收起入口） */
+.mx-handle {
+  display: flex; justify-content: center; align-items: center;
+  position: relative; padding-bottom: 8px;
+}
+.mx-grip { width: 44px; height: 4px; border-radius: 2px; background: rgba(123,140,222,.3); }
+#mxClose {
+  position: absolute; right: 0; top: -2px;
+  background: transparent; border: none;
+  color: #6E7288; font-size: 12px; letter-spacing: .1em;
+  cursor: pointer; transition: color .2s;
+}
+#mxClose:hover { color: #E8DCC4; }
 .mx-presets {
   display: flex; align-items: center; gap: 8px;
   padding-bottom: 10px; margin-bottom: 10px;

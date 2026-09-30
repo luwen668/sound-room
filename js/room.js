@@ -618,8 +618,21 @@ function buildMixer() {
     b.addEventListener('click', () => applyPreset(b.dataset.preset)));
   document.querySelectorAll('.mx-timer button').forEach(b =>
     b.addEventListener('click', () => setSleepTimer(+b.dataset.min)));
+  const mx = document.getElementById('mixer');
   document.getElementById('mxToggle').addEventListener('click', () => {
-    document.getElementById('mixer').classList.toggle('open');
+    mx.classList.toggle('open');
+  });
+  document.getElementById('mxClose').addEventListener('click', () => {
+    mx.classList.remove('open');
+  });
+  // 三种收起方式：面板内「收起」按钮 / 点击面板外任意处 / Esc
+  document.addEventListener('click', e => {
+    if (!mx.classList.contains('open')) return;
+    if (mx.contains(e.target) || document.getElementById('mxToggle').contains(e.target)) return;
+    mx.classList.remove('open');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') mx.classList.remove('open');
   });
 }
 
@@ -847,6 +860,26 @@ if (qp.get('selftest') === '4') {
         decoded: { rain: state.on.rain, cat: state.on.cat, volRain: state.vols.rain },
       });
     }, 300);
+  }, 800));
+}
+
+// M4b 自测：?selftest=5 → 混音台收起链路（外部点击 / 收起按钮 / Esc）
+if (qp.get('selftest') === '5') {
+  Promise.all(loadPromises).then(() => setTimeout(() => {
+    const mx = document.getElementById('mixer');
+    mx.classList.add('open');
+    cvsFx.dispatchEvent(new MouseEvent('click', { bubbles: true }));   // 点外部
+    const closedByOutside = !mx.classList.contains('open');
+    mx.classList.add('open');
+    document.getElementById('mxClose').click();                        // 收起按钮
+    const closedByBtn = !mx.classList.contains('open');
+    mx.classList.add('open');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); // Esc
+    const closedByEsc = !mx.classList.contains('open');
+    // 打开状态下点开关按钮应能保持可切换（不被外部点击误关）
+    document.getElementById('mxToggle').click();
+    const reopened = mx.classList.contains('open');
+    document.title = 'SELFTEST5 ' + JSON.stringify({ closedByOutside, closedByBtn, closedByEsc, reopened });
   }, 800));
 }
 

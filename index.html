@@ -27,6 +27,7 @@
 <div id="toast"></div>
 
 <div id="mixer">
+  <div class="mx-handle"><span class="mx-grip"></span><button id="mxClose">收起 ▾</button></div>
   <div class="mx-presets">
     <span class="mx-label">配方</span>
     <button data-preset="focus">专注</button>
@@ -53,12 +54,14 @@
 <script src="js/audio-engine.js"></script>
 <script src="js/room.js"></script>
 <script>
-// 顶栏实时时钟
-setInterval(() => {
+// 顶栏实时时钟（精确到秒）
+function tickClock() {
   const d = new Date();
   document.getElementById('clockTime').textContent =
-    String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-}, 1000);
+    [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+}
+tickClock();
+setInterval(tickClock, 500);
 </script>
 </body>
 </html>
