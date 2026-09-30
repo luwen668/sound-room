@@ -1,0 +1,7 @@
+# 开发产物
+_preview*.png
+_beam_crop.png
+.DS_Store
+
+# 原始素材包（体积大，不进版本库）
+assets/_vendor/

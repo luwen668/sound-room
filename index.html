@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>声音的房间 · Sound Room</title>
+<meta name="description" content="一间等距古堡图书馆。点击壁炉听雨，唤醒蜷睡的猫——每个物件都是一条声轨。">
+<script>window.addEventListener('error', e => { document.title = 'ERR: ' + e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno; });</script>
+<link rel="stylesheet" href="css/room.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">声音的房间 <span>SOUND ROOM</span></div>
+  <div class="top-right">
+    <button id="shareBtn">分享</button>
+    <div class="clock-time" id="clockTime">--:--</div>
+  </div>
+</header>
+
+<main id="stage">
+  <canvas id="scene" width="1000" height="860"></canvas>
+  <canvas id="fx" width="1000" height="860"></canvas>
+  <canvas id="light" width="1000" height="860"></canvas>
+</main>
+
+<div id="tip"></div>
+<div id="toast"></div>
+
+<div id="mixer">
+  <div class="mx-presets">
+    <span class="mx-label">配方</span>
+    <button data-preset="focus">专注</button>
+    <button data-preset="sleep">助眠</button>
+    <button data-preset="read">阅读</button>
+    <button data-preset="night" class="active">深夜</button>
+  </div>
+  <div id="mxSliders"></div>
+  <div class="mx-timer">
+    <span class="mx-label">定时</span>
+    <button data-min="15">15分</button>
+    <button data-min="30">30分</button>
+    <button data-min="60">60分</button>
+    <button data-min="0">关</button>
+    <span id="mxTimerLabel"></span>
+  </div>
+</div>
+
+<footer id="hint">
+  <span>点击物件开启声音 · 悬停滚轮调音量</span>
+  <button id="mxToggle">🎚 混音台</button>
+</footer>
+
+<script src="js/audio-engine.js"></script>
+<script src="js/room.js"></script>
+<script>
+// 顶栏实时时钟
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('clockTime').textContent =
+    String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}, 1000);
+</script>
+</body>
+</html>
