@@ -8,15 +8,15 @@
 /* ---------- 视口与等距坐标 ---------- */
 const VIEW = { w: 1000, h: 860 };
 const CX = 500, CY = 400;      // 房间中心（格子 0,0 的锚点）
-const STEP_X = 96, STEP_Y = 48; // 256×512 sprite @ 0.75 缩放后的等距步长
-const SC = 0.75, SPR_W = 256 * SC, SPR_H = 512 * SC;
+const STEP_X = 96, STEP_Y = 48; // 等距网格步长（一格）
+// 关键：Kenney miniature 精灵的地砖是 2×2 格拼块，256×512 画布
+// 必须按 0.375 缩放（96×192）绘制， footprint 恰好 = 1 格，否则重叠成"绗缝被子"
+const SC = 0.375, SPR_W = 256 * SC, SPR_H = 512 * SC;
 
 const iso = (i, j) => ({ x: CX + (i - j) * STEP_X, y: CY + (i + j) * STEP_Y });
 
 /* ---------- 精灵加载 ---------- */
 const SPRITES = {
-  tile:        'assets/sprites/stoneTile_N.png',
-  wall:        'assets/sprites/stoneWall_N.png',
   window:      'assets/sprites/stoneWallWindow_N.png',
   arch:        'assets/sprites/stoneWallArchway_N.png',
   bookcaseW:   'assets/sprites/bookcaseWideBooks_N.png',
@@ -41,49 +41,41 @@ const loadPromises = Object.entries(SPRITES).map(([k, src]) => new Promise(res =
 }));
 
 /* ---------- 场景定义（painter 顺序 = i+j 升序） ---------- */
-// 地板 5×5
-const tiles = [];
-for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) tiles.push({ k: 'tile', i, j });
-// 后墙（j=-0.5 线）与左墙（i=-0.5 线）
+// 地板与两面后墙改为自绘（连续石板/石墙），见 drawFloor/drawWalls
+// 靠墙家具与摆件（Kenney 精灵，1 格 footprint）
 const walls = [
-  { k: 'wall',      i: -0.5, j: -0.5 },
-  { k: 'wall',      i: 0,    j: -0.5 },
-  { k: 'bookcaseW', i: 1,    j: -0.5 },
-  { k: 'window',    i: 2,    j: -0.5, id: 'window' },
-  { k: 'bookcase',  i: 3,    j: -0.5 },
-  { k: 'wall',      i: 4,    j: -0.5 },
-  { k: 'wall',      i: -0.5, j: 0 },
-  { k: 'bookcaseH', i: -0.5, j: 0 },
-  { k: 'arch',      i: -0.5, j: 1, id: 'fire' },
-  { k: 'wall',      i: -0.5, j: 2 },
-  { k: 'display',   i: -0.5, j: 3 },
-  { k: 'wall',      i: -0.5, j: 4 },
+  { k: 'bookcaseW', i: 1,    j: -0.3, s: 1.4 },
+  { k: 'window',    i: 2,    j: -0.3, id: 'window' },
+  { k: 'bookcase',  i: 3,    j: -0.3, s: 1.4 },
+  { k: 'bookcaseH', i: -0.3, j: 0, s: 1.4 },
+  { k: 'arch',      i: -0.3, j: 1, id: 'fire' },
+  { k: 'display',   i: -0.3, j: 3, s: 1.4 },
 ];
 // 地面物件
 const props = [
-  { k: 'longTable',  i: 1,    j: 3 },
-  { k: 'chair',      i: 1.9,  j: 3.2 },
-  { k: 'carpet',     i: 2,    j: 2 },
-  { k: 'roundTable', i: 3.1,  j: 2.1, id: 'tea' },
-  { k: 'bookStand',  i: 3.6,  j: 0.8 },
-  { k: 'candleD',    i: 4.2,  j: 1.6,  id: 'candle' },   // 右侧墙边，远离落地钟避免误点
-  { k: 'candle',     i: 0.6,  j: 3.6 },
+  { k: 'longTable',  i: 1,    j: 3,   s: 1.35 },
+  { k: 'chair',      i: 1.9,  j: 3.2, s: 1.3 },
+  { k: 'carpet',     i: 2,    j: 2,   s: 1.5 },
+  { k: 'roundTable', i: 3.1,  j: 2.1, id: 'tea', s: 1.3 },
+  { k: 'bookStand',  i: 3.6,  j: 0.8, s: 1.3 },
+  { k: 'candleD',    i: 4.2,  j: 1.6,  id: 'candle', s: 1.35 },   // 右侧墙边，远离落地钟避免误点
+  { k: 'candle',     i: 0.6,  j: 3.6, s: 1.35 },
   { k: 'clock',      i: 4.35, j: 0.35, id: 'clock' },  // 自绘落地钟
   { k: 'cat',        i: 2.3,  j: 1.95, id: 'cat' },    // 自绘猫
 ];
-const scene = [...tiles, ...walls, ...props].sort((a, b) => (a.i + a.j) - (b.i + b.j));
+const scene = [...walls, ...props].sort((a, b) => (a.i + a.j) - (b.i + b.j));
 
 /* ---------- 关键锚点 ---------- */
 const P = {
-  window: iso(2, -0.5),
-  fire:   { x: iso(-0.5, 1).x - 38, y: iso(-0.5, 1).y },  // 对齐拱门开口中心
+  window: iso(2, -0.3),
+  fire:   { x: iso(-0.3, 1).x - 38, y: iso(-0.3, 1).y },  // 对齐拱门开口中心
   tea:    iso(3.1, 2.1),
   clock:  iso(4.35, 0.35),
   cat:    iso(2.3, 1.95),
   candleD:iso(4.2, 1.6),
   candle: iso(0.6, 3.6),
 };
-const RAIN_RECT = { x: P.window.x - 50, y: P.window.y - 218, w: 100, h: 145 };
+  const RAIN_RECT = { x: P.window.x - 28, y: P.window.y - 118, w: 56, h: 80 };
 
 /* ---------- 六声轨定义 ---------- */
 const TRACKS = [
@@ -116,10 +108,10 @@ const state = {
 /* ---------- 月光光柱 + 尘埃 ---------- */
 // 从窗口斜射到地板的平行四边形（视觉：冷蓝微光）
 const BEAM = [
-  { x: P.window.x - 38, y: P.window.y - 200 },
-  { x: P.window.x + 34, y: P.window.y - 200 },
-  { x: P.window.x - 96, y: P.window.y + 168 },
-  { x: P.window.x - 172, y: P.window.y + 168 },
+  { x: P.window.x - 22, y: P.window.y - 108 },
+  { x: P.window.x + 20, y: P.window.y - 108 },
+  { x: P.window.x - 55, y: P.window.y + 92 },
+  { x: P.window.x - 100, y: P.window.y + 92 },
 ];
 const dustMotes = Array.from({ length: 16 }, () => ({
   x: Math.random(), y: Math.random(), s: 0.3 + Math.random() * 0.7, ph: Math.random() * Math.PI * 2,
@@ -145,24 +137,24 @@ function fitCanvas(c) {
 }
 fitCanvas(cvsScene); fitCanvas(cvsFx); fitCanvas(cvsLight);
 
-/* ---------- 自绘：猫（蜷睡：闭眼、鼻嘴、胡须、虎斑、绕身尾） ---------- */
+/* ---------- 自绘：猫（橘猫蜷睡：闭眼、鼻嘴、胡须、虎斑、绕身尾） ---------- */
 function drawCat(ctx, x, y, t, purring) {
   const br = 1 + Math.sin(t * 1.6) * 0.05;             // 呼吸
   const twitch = Math.sin(t * 0.7) > 0.97 ? 4 : 0;      // 偶尔耳动
-  const FUR = '#B0ACA0', FUR_D = '#989486', STRIPE = '#8F8B7E', LINE = '#6E6A60';
+  const FUR = '#D9A066', FUR_D = '#C08B52', STRIPE = '#B0763D', LINE = '#7A5A34';
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(1.7, 1.7 * br);
+  ctx.scale(1.25, 1.25 * br);
 
   /* 尾巴：从身后绕到身前（蜷团经典姿势），尾尖深色 */
   const tailSway = Math.sin(t * 0.9) * 2;
-  ctx.strokeStyle = FUR_D; ctx.lineWidth = 8; ctx.lineCap = 'round';
+  ctx.strokeStyle = FUR_D; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(32, -12);
   ctx.quadraticCurveTo(40, 3, 14, 4);
   ctx.quadraticCurveTo(-4, 4, -13, -3 + tailSway);
   ctx.stroke();
-  ctx.strokeStyle = STRIPE; ctx.lineWidth = 4;
+  ctx.strokeStyle = STRIPE; ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(-13, -3 + tailSway);
   ctx.lineTo(-18, -5 + tailSway);
@@ -192,7 +184,7 @@ function drawCat(ctx, x, y, t, purring) {
   ctx.fillStyle = FUR_D;
   ctx.beginPath(); ctx.moveTo(-37, -33); ctx.lineTo(-34, -46 + twitch); ctx.lineTo(-26, -37); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(-22, -37); ctx.lineTo(-17, -47); ctx.lineTo(-12, -34); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#9A8478';
+  ctx.fillStyle = '#E8C39A';
   ctx.beginPath(); ctx.moveTo(-34, -36); ctx.lineTo(-32.5, -42 + twitch); ctx.lineTo(-29, -37); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(-20, -37); ctx.lineTo(-18, -42); ctx.lineTo(-15.5, -36); ctx.closePath(); ctx.fill();
 
@@ -201,7 +193,7 @@ function drawCat(ctx, x, y, t, purring) {
   ctx.beginPath(); ctx.arc(-29, -27, 3, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
   ctx.beginPath(); ctx.arc(-19, -27, 3, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
   /* 鼻 + 嘴（小 ω） */
-  ctx.fillStyle = '#9A8478';
+  ctx.fillStyle = '#B0763D';
   ctx.beginPath(); ctx.moveTo(-25.6, -21.5); ctx.lineTo(-22.4, -21.5); ctx.lineTo(-24, -19.2); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = LINE; ctx.lineWidth = 1.1;
   ctx.beginPath(); ctx.arc(-25.6, -19.4, 1.7, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
@@ -216,8 +208,8 @@ function drawCat(ctx, x, y, t, purring) {
   /* 呼噜时的 Zzz */
   if (purring && Math.sin(t * 0.5) > 0.6) {
     ctx.fillStyle = 'rgba(200,205,230,.85)';
-    ctx.font = '600 13px Georgia';
-    ctx.fillText('z', -44, -52 - (t % 1) * 10);
+    ctx.font = '600 11px Georgia';
+    ctx.fillText('z', -40, -46 - (t % 1) * 8);
   }
   ctx.restore();
 }
@@ -226,6 +218,7 @@ function drawCat(ctx, x, y, t, purring) {
 function drawClock(ctx, x, y, t) {
   ctx.save();
   ctx.translate(x, y);
+  ctx.scale(0.55, 0.55);
   // 钟壳
   ctx.fillStyle = '#4A3626';
   ctx.beginPath();
@@ -260,27 +253,117 @@ function drawClock(ctx, x, y, t) {
 }
 
 /* ---------- 场景静态渲染 ---------- */
-const FLOOR_POLYGON = [iso(0, 0), iso(0, 4), iso(4, 4), iso(4, 0)];
-function drawScene() {
-  ctxS.clearRect(0, 0, VIEW.w, VIEW.h);
-  // 地板基座（填补 tile 缝隙，避免"黑洞"感）
+const FLOOR_POLYGON = [iso(0, 0), iso(0, 5), iso(5, 5), iso(5, 0)];
+const WALL_H = 190;                 // 后墙高度（px）
+const STONE_PALETTE = ['#C9BEA4', '#C2B79C', '#BCB195', '#C6BBA1'];
+
+/* 两面后墙（沿 j=0 边与 i=0 边）：连续石墙，砖缝错缝，带顶面与转角柱 */
+function drawWalls() {
+  const edgeA = [iso(0, 0), iso(5, 0)];   // 右后墙基线
+  const edgeB = [iso(0, 0), iso(0, 5)];   // 左后墙基线
+  const face = (E0, E1, tx) => {
+    // 墙面（上亮下暗）
+    const g = ctxS.createLinearGradient(0, Math.min(E0.y, E1.y) - WALL_H, 0, Math.max(E0.y, E1.y));
+    g.addColorStop(0, '#968D77'); g.addColorStop(1, '#6B6452');
+    ctxS.fillStyle = g;
+    ctxS.beginPath();
+    ctxS.moveTo(E0.x, E0.y); ctxS.lineTo(E1.x, E1.y);
+    ctxS.lineTo(E1.x, E1.y - WALL_H); ctxS.lineTo(E0.x, E0.y - WALL_H);
+    ctxS.closePath(); ctxS.fill();
+    // 砖缝（裁剪到墙面内）
+    ctxS.save(); ctxS.clip();
+    ctxS.strokeStyle = 'rgba(56,48,36,.42)'; ctxS.lineWidth = 1.4;
+    const yTop = Math.min(E0.y, E1.y) - WALL_H, yBot = Math.max(E0.y, E1.y);
+    const xL = Math.min(E0.x, E1.x) - 8, xR = Math.max(E0.x, E1.x) + 8;
+    for (let y = yBot - 15; y > yTop; y -= 17) {
+      ctxS.beginPath(); ctxS.moveTo(xL, y); ctxS.lineTo(xR, y); ctxS.stroke();
+    }
+    let row = 0;
+    for (let y = yBot - 15; y > yTop; y -= 17, row++) {
+      for (let x = xL + (row % 2 ? 26 : 9); x < xR; x += 44) {
+        ctxS.beginPath(); ctxS.moveTo(x, y); ctxS.lineTo(x, y - 17); ctxS.stroke();
+      }
+    }
+    ctxS.restore();
+    // 顶面（朝屋内偏移的窄条）
+    ctxS.fillStyle = '#A99E85';
+    ctxS.beginPath();
+    ctxS.moveTo(E0.x, E0.y - WALL_H); ctxS.lineTo(E1.x, E1.y - WALL_H);
+    ctxS.lineTo(E1.x + tx, E1.y - WALL_H + 10); ctxS.lineTo(E0.x + tx, E0.y - WALL_H + 10);
+    ctxS.closePath(); ctxS.fill();
+  };
+  face(edgeA[0], edgeA[1], -9);
+  face(edgeB[0], edgeB[1], 9);
+  // 转角柱（遮两面墙接缝）
+  const c = iso(0, 0);
+  ctxS.fillStyle = '#635C4B';
+  ctxS.fillRect(c.x - 8, c.y - WALL_H, 16, WALL_H);
+  ctxS.strokeStyle = 'rgba(56,48,36,.42)'; ctxS.lineWidth = 1.4;
+  for (let y = c.y - 15; y > c.y - WALL_H; y -= 17) {
+    ctxS.beginPath(); ctxS.moveTo(c.x - 8, y); ctxS.lineTo(c.x + 8, y); ctxS.stroke();
+  }
+  ctxS.fillStyle = '#B0A58B';
+  ctxS.beginPath(); ctxS.ellipse(c.x, c.y - WALL_H, 12, 6, 0, 0, Math.PI * 2); ctxS.fill();
+}
+
+/* 连续石板地板：5×5 格，每格 2×2 迷你砖（与 Kenney 墙壁砖块尺度一致），墙根压暗 */
+function drawFloor() {
+  // 基座（外沿加厚，承托墙体视觉）
   ctxS.fillStyle = '#333952';
   ctxS.beginPath();
   ctxS.moveTo(FLOOR_POLYGON[0].x, FLOOR_POLYGON[0].y + 8);
   FLOOR_POLYGON.forEach(p => ctxS.lineTo(p.x, p.y + 8));
   ctxS.closePath(); ctxS.fill();
+  // 逐格 2×2 迷你砖（确定性配色，刷新不闪变）
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) {
+    const A = iso(i, j), B = iso(i, j + 1), C = iso(i + 1, j + 1), D = iso(i + 1, j);
+    const Puv = (u, v) => ({
+      x: A.x * (1 - u) * (1 - v) + B.x * (1 - u) * v + C.x * u * v + D.x * u * (1 - v),
+      y: A.y * (1 - u) * (1 - v) + B.y * (1 - u) * v + C.y * u * v + D.y * u * (1 - v),
+    });
+    for (let mi = 0; mi < 2; mi++) for (let mj = 0; mj < 2; mj++) {
+      const p1 = Puv(mi / 2, mj / 2), p2 = Puv(mi / 2, (mj + 1) / 2),
+            p3 = Puv((mi + 1) / 2, (mj + 1) / 2), p4 = Puv((mi + 1) / 2, mj / 2);
+      ctxS.fillStyle = STONE_PALETTE[(i * 7 + j * 3 + mi * 5 + mj + (i + j) % 2) % 4];
+      ctxS.beginPath();
+      ctxS.moveTo(p1.x, p1.y); ctxS.lineTo(p2.x, p2.y); ctxS.lineTo(p3.x, p3.y); ctxS.lineTo(p4.x, p4.y);
+      ctxS.closePath(); ctxS.fill();
+      ctxS.strokeStyle = 'rgba(74,66,50,.4)'; ctxS.lineWidth = 1; ctxS.stroke();
+    }
+  }
+  // 墙根环境光遮蔽（两条后沿压暗，增强房间纵深感）
+  const ao = (E0, E1, T) => {
+    const g = ctxS.createLinearGradient(E0.x, E0.y, E0.x + T.x, E0.y + T.y);
+    g.addColorStop(0, 'rgba(10,12,26,.4)'); g.addColorStop(1, 'rgba(10,12,26,0)');
+    ctxS.fillStyle = g;
+    ctxS.beginPath();
+    ctxS.moveTo(E0.x, E0.y); ctxS.lineTo(E1.x, E1.y);
+    ctxS.lineTo(E1.x + T.x, E1.y + T.y); ctxS.lineTo(E0.x + T.x, E0.y + T.y);
+    ctxS.closePath(); ctxS.fill();
+  };
+  ao(iso(0, 0), iso(5, 0), { x: -36, y: 18 });
+  ao(iso(0, 0), iso(0, 5), { x: 36, y: 18 });
+}
+
+function drawScene() {
+  ctxS.clearRect(0, 0, VIEW.w, VIEW.h);
+  drawWalls();
+  drawFloor();
   for (const o of scene) {
     const p = iso(o.i, o.j);
     if (o.k === 'cat') { drawCat(ctxS, p.x, p.y, performance.now() / 1000, state.on.cat); continue; }
     if (o.k === 'clock') { drawClock(ctxS, p.x, p.y, performance.now() / 1000); continue; }
     const im = img[o.k];
-    if (im) ctxS.drawImage(im, p.x - SPR_W / 2, p.y - SPR_H, SPR_W, SPR_H);
+    if (im) {
+      const sc = o.s || 1;  // 家具类放大（底部锚点不变，只长个儿）
+      ctxS.drawImage(im, p.x - SPR_W * sc / 2, p.y - SPR_H * sc, SPR_W * sc, SPR_H * sc);
+    }
     // 悬停高亮
     if (state.hovered && o.id === state.hovered.id) {
-      const g = ctxS.createRadialGradient(p.x, p.y - 120, 10, p.x, p.y - 120, 150);
+      const g = ctxS.createRadialGradient(p.x, p.y - 70, 8, p.x, p.y - 70, 95);
       g.addColorStop(0, 'rgba(242,166,90,.22)'); g.addColorStop(1, 'rgba(242,166,90,0)');
       ctxS.fillStyle = g;
-      ctxS.fillRect(p.x - 160, p.y - 280, 320, 300);
+      ctxS.fillRect(p.x - 100, p.y - 170, 200, 185);
     }
   }
   // 常驻名牌：标明哪些物件可点击（可被「标注」开关关闭）
@@ -303,8 +386,8 @@ function drawScene() {
 
 /* ---------- 粒子 ---------- */
 const rainDrops = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), s: 0.6 + Math.random() * 0.8 }));
-const sparks = Array.from({ length: 24 }, () => ({ x: Math.random() * 30 - 15, y: 0, v: 20 + Math.random() * 40, drift: Math.random() * 20 - 10 }));
-const steams = Array.from({ length: 7 }, () => ({ x: Math.random() * 14 - 7, y: Math.random() * 40, v: 12 + Math.random() * 14 }));
+const sparks = Array.from({ length: 24 }, () => ({ x: Math.random() * 18 - 9, y: 0, v: 12 + Math.random() * 24, drift: Math.random() * 20 - 10 }));
+const steams = Array.from({ length: 7 }, () => ({ x: Math.random() * 10 - 5, y: Math.random() * 28, v: 8 + Math.random() * 10 }));
 let fireFlicker = 1, candleFlicker = 1;
 
 function drawParticles(dt, t) {
@@ -334,14 +417,14 @@ function drawParticles(dt, t) {
       const d = rainDrops[k];
       d.y += d.s * dt * 1.6; if (d.y > 1) { d.y = 0; d.x = Math.random(); }
       const px = RAIN_RECT.x + d.x * RAIN_RECT.w, py = RAIN_RECT.y + d.y * RAIN_RECT.h;
-      ctxF.beginPath(); ctxF.moveTo(px, py); ctxF.lineTo(px - 2, py + 9 * d.s); ctxF.stroke();
+      ctxF.beginPath(); ctxF.moveTo(px, py); ctxF.lineTo(px - 1.5, py + 6 * d.s); ctxF.stroke();
     }
     ctxF.restore();
     // 窗台溅落
     ctxF.fillStyle = `rgba(160,180,235,${0.25 * state.rainLevel})`;
     for (let k = 0; k < 6; k++) {
       const sx = RAIN_RECT.x + ((t * 130 + k * 37) % RAIN_RECT.w);
-      ctxF.fillRect(sx, RAIN_RECT.y + RAIN_RECT.h - 2, 3, 2);
+      ctxF.fillRect(sx, RAIN_RECT.y + RAIN_RECT.h - 2, 2, 1.5);
     }
   }
 
@@ -370,31 +453,31 @@ function drawParticles(dt, t) {
   /* 壁炉：火焰 + 火星 */
   if (state.on.fire) {
     fireFlicker = 0.85 + Math.sin(t * 11) * 0.08 + Math.sin(t * 23 + 1) * 0.07;
-    const fx = P.fire.x, fy = P.fire.y - 46;
+    const fx = P.fire.x, fy = P.fire.y - 26;
     ctxF.save();
     // 木柴堆
     ctxF.fillStyle = '#4A3626';
-    ctxF.fillRect(fx - 26, fy - 6, 52, 8);
+    ctxF.fillRect(fx - 15, fy - 4, 30, 5);
     ctxF.fillStyle = '#5A4433';
-    ctxF.fillRect(fx - 20, fy - 12, 40, 7);
+    ctxF.fillRect(fx - 11, fy - 7, 22, 4);
     ctxF.globalCompositeOperation = 'lighter';
     for (let l = 0; l < 3; l++) {
-      const h = (52 - l * 14) * fireFlicker, w = (26 - l * 7);
-      const g = ctxF.createRadialGradient(fx, fy - h * 0.4, 2, fx, fy - h * 0.4, h);
+      const h = (30 - l * 8) * fireFlicker, w = (15 - l * 4);
+      const g = ctxF.createRadialGradient(fx, fy - h * 0.4, 1.5, fx, fy - h * 0.4, h);
       const col = l === 0 ? '217,108,61' : l === 1 ? '242,166,90' : '247,215,116';
       g.addColorStop(0, `rgba(${col},.9)`); g.addColorStop(1, `rgba(${col},0)`);
       ctxF.fillStyle = g;
       ctxF.beginPath();
-      ctxF.ellipse(fx + Math.sin(t * 9 + l * 2) * 4, fy - h * 0.35, w, h, 0, 0, Math.PI * 2);
+      ctxF.ellipse(fx + Math.sin(t * 9 + l * 2) * 2.5, fy - h * 0.35, w, h, 0, 0, Math.PI * 2);
       ctxF.fill();
     }
     // 火星
     ctxF.fillStyle = 'rgba(247,215,116,.9)';
     sparks.forEach(s => {
-      s.y -= s.v * dt; s.x += Math.sin(t * 3 + s.drift) * dt * 12;
-      if (s.y < -80) { s.y = 0; s.x = Math.random() * 30 - 15; }
-      ctxF.globalAlpha = Math.max(0, 1 + s.y / 90);
-      ctxF.fillRect(fx + s.x, fy + s.y, 2.5, 2.5);
+      s.y -= s.v * dt; s.x += Math.sin(t * 3 + s.drift) * dt * 8;
+      if (s.y < -46) { s.y = 0; s.x = Math.random() * 18 - 9; }
+      ctxF.globalAlpha = Math.max(0, 1 + s.y / 55);
+      ctxF.fillRect(fx + s.x, fy + s.y, 1.8, 1.8);
     });
     ctxF.restore();
     ctxF.globalAlpha = 1;
@@ -402,11 +485,11 @@ function drawParticles(dt, t) {
 
   /* 茶炉蒸汽（随 teaLevel 淡入淡出） */
   if (state.teaLevel > 0.02) {
-    ctxF.fillStyle = `rgba(220,225,240,${0.16 * state.teaLevel})`;
+    ctxF.fillStyle = `rgba(220,225,240,${0.22 * state.teaLevel})`;
     steams.forEach(s => {
-      s.y -= s.v * dt; if (s.y < -50) { s.y = 0; s.x = Math.random() * 14 - 7; }
+      s.y -= s.v * dt; if (s.y < -32) { s.y = 0; s.x = Math.random() * 10 - 5; }
       ctxF.beginPath();
-      ctxF.arc(P.tea.x + s.x + Math.sin(t + s.x) * 4, P.tea.y - 120 + s.y, 5 + (-s.y) * 0.12, 0, Math.PI * 2);
+      ctxF.arc(P.tea.x + s.x + Math.sin(t + s.x) * 3, P.tea.y - 78 + s.y, 3.5 + (-s.y) * 0.1, 0, Math.PI * 2);
       ctxF.fill();
     });
   }
@@ -423,12 +506,12 @@ function drawParticles(dt, t) {
       g.addColorStop(1, 'rgba(242,166,90,0)');
       ctxF.fillStyle = g;
       ctxF.beginPath();
-      ctxF.ellipse(x + Math.sin(t * 7 + x) * 1.5, y - h * 0.5, h * 0.32, h * 0.62 * candleFlicker, 0, 0, Math.PI * 2);
+      ctxF.ellipse(x + Math.sin(t * 7 + x) * 1, y - h * 0.5, h * 0.32, h * 0.62 * candleFlicker, 0, 0, Math.PI * 2);
       ctxF.fill();
     };
-    flame(P.candleD.x - 14, P.candleD.y - 152, 26);
-    flame(P.candleD.x + 14, P.candleD.y - 152, 22);
-    flame(P.candle.x, P.candle.y - 96, 18);
+    flame(P.candleD.x - 11, P.candleD.y - 77, 15);
+    flame(P.candleD.x + 11, P.candleD.y - 77, 13);
+    flame(P.candle.x, P.candle.y - 74, 12);
     ctxF.restore();
   }
 }
@@ -452,16 +535,16 @@ function drawLight() {
     g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctxL.fillStyle = g; ctxL.fillRect(x - r, y - r, r * 2, r * 2);
   };
-  if (state.on.fire) punch(P.fire.x, P.fire.y - 60, 340 * fireFlicker, 0.95);
+  if (state.on.fire) punch(P.fire.x, P.fire.y - 35, 205 * fireFlicker, 0.9);
   // 月光光柱对应的地板微亮
-  punch((BEAM[2].x + BEAM[3].x) / 2, BEAM[2].y - 10, 130, 0.3);
+  punch((BEAM[2].x + BEAM[3].x) / 2, BEAM[2].y - 6, 75, 0.3);
   // 烛台：开启时更亮更大，关闭时只剩装饰微光
-  punch(P.candleD.x, P.candleD.y - 150, 150 + 90 * state.candleLevel, 0.35 + 0.4 * state.candleLevel);
-  punch(P.candle.x, P.candle.y - 90, 100 + 50 * state.candleLevel, 0.2 + 0.35 * state.candleLevel);
-  punch(P.tea.x, P.tea.y - 110, 100, 0.25 + 0.2 * state.teaLevel);
-  punch(P.cat.x, P.cat.y - 20, 90, 0.3);
-  punch(P.window.x, P.window.y - 160, 140, 0.25);            // 月光
-  punch(P.clock.x, P.clock.y - 140, 70, 0.2);
+  punch(P.candleD.x, P.candleD.y - 77, 85 + 50 * state.candleLevel, 0.35 + 0.4 * state.candleLevel);
+  punch(P.candle.x, P.candle.y - 60, 58 + 30 * state.candleLevel, 0.2 + 0.35 * state.candleLevel);
+  punch(P.tea.x, P.tea.y - 70, 60, 0.25 + 0.2 * state.teaLevel);
+  punch(P.cat.x, P.cat.y - 12, 55, 0.3);
+  punch(P.window.x, P.window.y - 90, 85, 0.25);            // 月光
+  punch(P.clock.x, P.clock.y - 78, 45, 0.2);
   // 闪电：整屏泛蓝白（在打孔之后盖，才能提亮所有区域）
   if (state.flash > 0.02) {
     ctxL.globalCompositeOperation = 'source-over';
@@ -609,12 +692,12 @@ function finishSleep() {
 
 /* ---------- 交互对象注册 ---------- */
 const OBJECTS = [
-  { id: 'window', name: '木窗',   sound: '雨声',     ...P.window, hitW: 150, hitH: 330, hoverY: -330 },
-  { id: 'fire',   name: '壁炉',   sound: '柴火噼啪', ...P.fire,   hitW: 170, hitH: 300, hoverY: -300 },
-  { id: 'tea',    name: '茶炉',   sound: '沸水咕嘟', ...P.tea,    hitW: 150, hitH: 180, hoverY: -180 },
-  { id: 'candle', name: '烛台',   sound: '烛火轻响', ...P.candleD,hitW: 110, hitH: 210, hoverY: -210 },
-  { id: 'clock',  name: '落地钟', sound: '滴答',     ...P.clock, hitW: 90,  hitH: 260, hoverY: -260 },
-  { id: 'cat',    name: '猫',     sound: '呼噜',     ...P.cat,    hitW: 110, hitH: 70,  hoverY: -70 },
+  { id: 'window', name: '木窗',   sound: '雨声',     ...P.window, hitW: 85,  hitH: 190, hoverY: -190 },
+  { id: 'fire',   name: '壁炉',   sound: '柴火噼啪', ...P.fire,   hitW: 100, hitH: 175, hoverY: -175 },
+  { id: 'tea',    name: '茶炉',   sound: '沸水咕嘟', ...P.tea,    hitW: 90,  hitH: 105, hoverY: -105 },
+  { id: 'candle', name: '烛台',   sound: '烛火轻响', ...P.candleD,hitW: 65,  hitH: 120, hoverY: -120 },
+  { id: 'clock',  name: '落地钟', sound: '滴答',     ...P.clock, hitW: 55,  hitH: 150, hoverY: -150 },
+  { id: 'cat',    name: '猫',     sound: '呼噜',     ...P.cat,    hitW: 85,  hitH: 55,  hoverY: -55 },
 ];
 
 /* ---------- 音频接线 ---------- */
