@@ -6,6 +6,7 @@
 |------|------|------|------|------|
 | rain_loop.mp3 | Rain in the Gutter Loop | Ogrebane | https://opengameart.org/content/rain-gutter-loop | CC0 |
 | fire_loop.m4a | Fireplace Sound loop（由 WAV 转码） | PagDev | https://opengameart.org/content/fireplace-sound-loop | CC0 |
+| tea_boil.m4a | Boiling water loops · cooking_without_cover（+6dB 增益转码） | TinyWorlds | https://opengameart.org/content/boiling-water-loops | CC0 |
 
 ## 合成音（非素材，代码实时生成）
 

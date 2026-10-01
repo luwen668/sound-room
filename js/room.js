@@ -44,11 +44,11 @@ const loadPromises = Object.entries(SPRITES).map(([k, src]) => new Promise(res =
 // 地板与两面后墙改为自绘（连续石板/石墙），见 drawFloor/drawWalls
 // 靠墙家具与摆件（Kenney 精灵，1 格 footprint）
 const walls = [
+  { k: 'bookcaseH', i: 0,    j: -0.3, s: 1.4 },
   { k: 'bookcaseW', i: 1,    j: -0.3, s: 1.4 },
-  { k: 'window',    i: 2,    j: -0.3, id: 'window' },
+  { k: 'window',    i: 2,    j: -0.3, id: 'window', s: 1.15 },
   { k: 'bookcase',  i: 3,    j: -0.3, s: 1.4 },
-  { k: 'bookcaseH', i: -0.3, j: 0, s: 1.4 },
-  { k: 'arch',      i: -0.3, j: 1, id: 'fire' },
+  { k: 'arch',      i: 0.37, j: 1, id: 'fire', s: 1.15 },  // 嵌在壁炉烟囱墙上
   { k: 'display',   i: -0.3, j: 3, s: 1.4 },
 ];
 // 地面物件
@@ -68,14 +68,14 @@ const scene = [...walls, ...props].sort((a, b) => (a.i + a.j) - (b.i + b.j));
 /* ---------- 关键锚点 ---------- */
 const P = {
   window: iso(2, -0.3),
-  fire:   { x: iso(-0.3, 1).x - 38, y: iso(-0.3, 1).y },  // 对齐拱门开口中心
+  fire:   { x: iso(0.37, 1).x - 44, y: iso(0.37, 1).y },  // 对齐拱门开口中心（烟囱墙正面）
   tea:    iso(3.1, 2.1),
   clock:  iso(4.35, 0.35),
   cat:    iso(2.3, 1.95),
   candleD:iso(4.2, 1.6),
   candle: iso(0.6, 3.6),
 };
-  const RAIN_RECT = { x: P.window.x - 28, y: P.window.y - 118, w: 56, h: 80 };
+  const RAIN_RECT = { x: P.window.x - 32, y: P.window.y - 136, w: 64, h: 92 };
 
 /* ---------- 六声轨定义 ---------- */
 const TRACKS = [
@@ -257,6 +257,20 @@ const FLOOR_POLYGON = [iso(0, 0), iso(0, 5), iso(5, 5), iso(5, 0)];
 const WALL_H = 190;                 // 后墙高度（px）
 const STONE_PALETTE = ['#C9BEA4', '#C2B79C', '#BCB195', '#C6BBA1'];
 
+/* 砖缝绘制（需先裁剪到墙面多边形） */
+function brickLines(xL, xR, yTop, yBot) {
+  ctxS.strokeStyle = 'rgba(56,48,36,.42)'; ctxS.lineWidth = 1.4;
+  for (let y = yBot - 15; y > yTop; y -= 17) {
+    ctxS.beginPath(); ctxS.moveTo(xL, y); ctxS.lineTo(xR, y); ctxS.stroke();
+  }
+  let row = 0;
+  for (let y = yBot - 15; y > yTop; y -= 17, row++) {
+    for (let x = xL + (row % 2 ? 26 : 9); x < xR; x += 44) {
+      ctxS.beginPath(); ctxS.moveTo(x, y); ctxS.lineTo(x, y - 17); ctxS.stroke();
+    }
+  }
+}
+
 /* 两面后墙（沿 j=0 边与 i=0 边）：连续石墙，砖缝错缝，带顶面与转角柱 */
 function drawWalls() {
   const edgeA = [iso(0, 0), iso(5, 0)];   // 右后墙基线
@@ -272,18 +286,8 @@ function drawWalls() {
     ctxS.closePath(); ctxS.fill();
     // 砖缝（裁剪到墙面内）
     ctxS.save(); ctxS.clip();
-    ctxS.strokeStyle = 'rgba(56,48,36,.42)'; ctxS.lineWidth = 1.4;
-    const yTop = Math.min(E0.y, E1.y) - WALL_H, yBot = Math.max(E0.y, E1.y);
-    const xL = Math.min(E0.x, E1.x) - 8, xR = Math.max(E0.x, E1.x) + 8;
-    for (let y = yBot - 15; y > yTop; y -= 17) {
-      ctxS.beginPath(); ctxS.moveTo(xL, y); ctxS.lineTo(xR, y); ctxS.stroke();
-    }
-    let row = 0;
-    for (let y = yBot - 15; y > yTop; y -= 17, row++) {
-      for (let x = xL + (row % 2 ? 26 : 9); x < xR; x += 44) {
-        ctxS.beginPath(); ctxS.moveTo(x, y); ctxS.lineTo(x, y - 17); ctxS.stroke();
-      }
-    }
+    brickLines(Math.min(E0.x, E1.x) - 8, Math.max(E0.x, E1.x) + 8,
+      Math.min(E0.y, E1.y) - WALL_H, Math.max(E0.y, E1.y));
     ctxS.restore();
     // 顶面（朝屋内偏移的窄条）
     ctxS.fillStyle = '#A99E85';
@@ -298,12 +302,60 @@ function drawWalls() {
   const c = iso(0, 0);
   ctxS.fillStyle = '#635C4B';
   ctxS.fillRect(c.x - 8, c.y - WALL_H, 16, WALL_H);
-  ctxS.strokeStyle = 'rgba(56,48,36,.42)'; ctxS.lineWidth = 1.4;
-  for (let y = c.y - 15; y > c.y - WALL_H; y -= 17) {
-    ctxS.beginPath(); ctxS.moveTo(c.x - 8, y); ctxS.lineTo(c.x + 8, y); ctxS.stroke();
-  }
+  brickLines(c.x - 8, c.x + 8, c.y - WALL_H, c.y);
   ctxS.fillStyle = '#B0A58B';
   ctxS.beginPath(); ctxS.ellipse(c.x, c.y - WALL_H, 12, 6, 0, 0, Math.PI * 2); ctxS.fill();
+}
+
+/* 壁炉烟囱墙 + 炉床石板 + 木窗窗台：让壁炉/木窗成为有体积的石作，而非"墙上的画" */
+function drawMasonry() {
+  // —— 壁炉烟囱墙（从左墙凸出 0.35 格，宽 j 0.25~1.75，高 210） ——
+  const Hb = 210, D = 0.35, J0 = 0.25, J1 = 1.75;
+  const a0 = iso(D, J0), a1 = iso(D, J1);   // 正面底边两端
+  const b0 = iso(0, J0), b1 = iso(0, J1);   // 贴墙底边两端
+  const fg = ctxS.createLinearGradient(0, a0.y - Hb, 0, a0.y);
+  fg.addColorStop(0, '#9A9078'); fg.addColorStop(1, '#766E5B');
+  ctxS.fillStyle = fg;
+  ctxS.beginPath();
+  ctxS.moveTo(a0.x, a0.y); ctxS.lineTo(a1.x, a1.y);
+  ctxS.lineTo(a1.x, a1.y - Hb); ctxS.lineTo(a0.x, a0.y - Hb);
+  ctxS.closePath(); ctxS.fill();
+  ctxS.save(); ctxS.clip();
+  brickLines(Math.min(a0.x, a1.x) - 6, Math.max(a0.x, a1.x) + 6, a0.y - Hb, a0.y);
+  ctxS.restore();
+  // 顶面与两个端头
+  ctxS.fillStyle = '#ADA28A';
+  ctxS.beginPath();
+  ctxS.moveTo(b0.x, b0.y - Hb); ctxS.lineTo(a0.x, a0.y - Hb);
+  ctxS.lineTo(a1.x, a1.y - Hb); ctxS.lineTo(b1.x, b1.y - Hb);
+  ctxS.closePath(); ctxS.fill();
+  [[b0, a0], [b1, a1]].forEach(([p, q]) => {
+    ctxS.fillStyle = '#6E6754';
+    ctxS.beginPath();
+    ctxS.moveTo(p.x, p.y); ctxS.lineTo(q.x, q.y);
+    ctxS.lineTo(q.x, q.y - Hb); ctxS.lineTo(p.x, p.y - Hb);
+    ctxS.closePath(); ctxS.fill();
+  });
+  // —— 炉床石板（从炉口凸出到 i=1.05，承接火焰） ——
+  const h0 = iso(D, 0.5), h1 = iso(D, 1.5), h2 = iso(1.05, 1.5), h3 = iso(1.05, 0.5);
+  ctxS.fillStyle = '#565148';
+  ctxS.beginPath();
+  ctxS.moveTo(h0.x, h0.y); ctxS.lineTo(h1.x, h1.y); ctxS.lineTo(h2.x, h2.y); ctxS.lineTo(h3.x, h3.y);
+  ctxS.closePath(); ctxS.fill();
+  ctxS.strokeStyle = 'rgba(30,28,24,.5)'; ctxS.lineWidth = 1.2; ctxS.stroke();
+  // —— 木窗窗台（凸出 0.24 格，托住窗洞下沿） ——
+  const SY = -74;
+  const s0 = iso(1.55, -0.02), s1 = iso(2.45, -0.02), s2 = iso(2.45, 0.22), s3 = iso(1.55, 0.22);
+  ctxS.fillStyle = '#B0A58B';
+  ctxS.beginPath();
+  ctxS.moveTo(s0.x, s0.y + SY); ctxS.lineTo(s1.x, s1.y + SY);
+  ctxS.lineTo(s2.x, s2.y + SY); ctxS.lineTo(s3.x, s3.y + SY);
+  ctxS.closePath(); ctxS.fill();
+  ctxS.fillStyle = '#8A8168';   // 窗台立沿
+  ctxS.beginPath();
+  ctxS.moveTo(s3.x, s3.y + SY); ctxS.lineTo(s2.x, s2.y + SY);
+  ctxS.lineTo(s2.x, s2.y + SY + 7); ctxS.lineTo(s3.x, s3.y + SY + 7);
+  ctxS.closePath(); ctxS.fill();
 }
 
 /* 连续石板地板：5×5 格，每格 2×2 迷你砖（与 Kenney 墙壁砖块尺度一致），墙根压暗 */
@@ -349,6 +401,7 @@ function drawScene() {
   ctxS.clearRect(0, 0, VIEW.w, VIEW.h);
   drawWalls();
   drawFloor();
+  drawMasonry();
   for (const o of scene) {
     const p = iso(o.i, o.j);
     if (o.k === 'cat') { drawCat(ctxS, p.x, p.y, performance.now() / 1000, state.on.cat); continue; }
@@ -457,12 +510,12 @@ function drawParticles(dt, t) {
     ctxF.save();
     // 木柴堆
     ctxF.fillStyle = '#4A3626';
-    ctxF.fillRect(fx - 15, fy - 4, 30, 5);
+    ctxF.fillRect(fx - 18, fy - 4, 36, 5);
     ctxF.fillStyle = '#5A4433';
-    ctxF.fillRect(fx - 11, fy - 7, 22, 4);
+    ctxF.fillRect(fx - 13, fy - 7, 26, 4);
     ctxF.globalCompositeOperation = 'lighter';
     for (let l = 0; l < 3; l++) {
-      const h = (30 - l * 8) * fireFlicker, w = (15 - l * 4);
+      const h = (34 - l * 9) * fireFlicker, w = (17 - l * 4.5);
       const g = ctxF.createRadialGradient(fx, fy - h * 0.4, 1.5, fx, fy - h * 0.4, h);
       const col = l === 0 ? '217,108,61' : l === 1 ? '242,166,90' : '247,215,116';
       g.addColorStop(0, `rgba(${col},.9)`); g.addColorStop(1, `rgba(${col},0)`);
@@ -475,7 +528,7 @@ function drawParticles(dt, t) {
     ctxF.fillStyle = 'rgba(247,215,116,.9)';
     sparks.forEach(s => {
       s.y -= s.v * dt; s.x += Math.sin(t * 3 + s.drift) * dt * 8;
-      if (s.y < -46) { s.y = 0; s.x = Math.random() * 18 - 9; }
+      if (s.y < -52) { s.y = 0; s.x = Math.random() * 18 - 9; }
       ctxF.globalAlpha = Math.max(0, 1 + s.y / 55);
       ctxF.fillRect(fx + s.x, fy + s.y, 1.8, 1.8);
     });
@@ -543,7 +596,7 @@ function drawLight() {
   punch(P.candle.x, P.candle.y - 60, 58 + 30 * state.candleLevel, 0.2 + 0.35 * state.candleLevel);
   punch(P.tea.x, P.tea.y - 70, 60, 0.25 + 0.2 * state.teaLevel);
   punch(P.cat.x, P.cat.y - 12, 55, 0.3);
-  punch(P.window.x, P.window.y - 90, 85, 0.25);            // 月光
+  punch(P.window.x, P.window.y - 100, 95, 0.25);           // 月光
   punch(P.clock.x, P.clock.y - 78, 45, 0.2);
   // 闪电：整屏泛蓝白（在打孔之后盖，才能提亮所有区域）
   if (state.flash > 0.02) {
@@ -710,7 +763,7 @@ function startTrack(key) {
     case 'fire':
       engine.startLoop('fire', 'assets/audio/fire_loop.m4a', { volume: v, fadeIn: 2 });
       break;
-    case 'tea':    engine.startBubble('tea', { volume: v }); break;
+    case 'tea':    engine.startLoop('tea', 'assets/audio/tea_boil.m4a', { volume: v, fadeIn: 2, filterFreq: 7000 }); break;
     case 'candle': engine.startCandle('candle', { volume: v }); break;
     case 'cat':    engine.startPurr('cat', { volume: v }); break;
     case 'tick':   engine.startTick('tick', { volume: v }); break;
