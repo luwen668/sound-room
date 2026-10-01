@@ -291,7 +291,7 @@ class AudioEngine {
     }, volume);
   }
 
-  /* ---------- 合成：烛火（极轻白噪床 + 偶尔细噼啪） ---------- */
+  /* ---------- 合成：烛火（极轻的气流感 + 罕见微噼剥，绝不像滴答） ---------- */
   startCandle(name, { volume = 0.35 } = {}) {
     this.ensure();
     if (this.tracks[name]) return;
@@ -299,34 +299,37 @@ class AudioEngine {
     out.gain.setValueAtTime(0.0001, this.now);
     out.gain.exponentialRampToValueAtTime(volume, this.now + 2);
     out.connect(this.master);
-    // 白噪床（低通压暗）
+    // 气流床：暗噪 + 7Hz 微颤（火苗的呼吸感，而不是"沙沙"背景音）
     const bed = this.ctx.createBufferSource();
     bed.buffer = this.noiseBuffer; bed.loop = true;
     const lp = this.ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 900;
-    const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.05;
+    lp.type = 'lowpass'; lp.frequency.value = 520;
+    const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.02;
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 6.5;
+    const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.008;
+    lfo.connect(lfoG); lfoG.connect(bedGain.gain);
     bed.connect(lp); lp.connect(bedGain); bedGain.connect(out);
-    bed.start();
-    // 细噼啪
+    bed.start(); lfo.start();
+    // 偶尔一声极轻的哔剥：间隔 1.5~5s、幅度压到很低，避免被听成钟摆
     let alive = true, timer = null;
     const snap = () => {
       if (!alive) return;
       const src = this.ctx.createBufferSource();
       src.buffer = this.noiseBuffer;
-      const hp = this.ctx.createBiquadFilter();
-      hp.type = 'highpass'; hp.frequency.value = 2800 + Math.random() * 2200;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 1600 + Math.random() * 1200; bp.Q.value = 1.5;
       const g = this.ctx.createGain();
-      const amp = 0.03 + Math.random() * 0.07;
+      const amp = 0.012 + Math.random() * 0.025;
       g.gain.setValueAtTime(amp, this.now);
       g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.02 + Math.random() * 0.03);
-      src.connect(hp); hp.connect(g); g.connect(out);
+      src.connect(bp); bp.connect(g); g.connect(out);
       src.start(this.now, Math.random() * 0.8, 0.06);
-      timer = setTimeout(snap, 300 + Math.random() * 1600);
+      timer = setTimeout(snap, 1500 + Math.random() * 3500);
     };
     snap();
     this._register(name, out, () => {
       alive = false; clearTimeout(timer);
-      try { bed.stop(); } catch (e) {}
+      try { bed.stop(); lfo.stop(); } catch (e) {}
     }, volume);
   }
 
