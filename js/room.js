@@ -44,12 +44,12 @@ const loadPromises = Object.entries(SPRITES).map(([k, src]) => new Promise(res =
 // 地板与两面后墙改为自绘（连续石板/石墙），见 drawFloor/drawWalls
 // 靠墙家具与摆件（Kenney 精灵，1 格 footprint）
 const walls = [
-  { k: 'bookcaseH', i: 0,    j: -0.3, s: 1.4 },
-  { k: 'bookcaseW', i: 1,    j: -0.3, s: 1.4 },
-  { k: 'window',    i: 2,    j: -0.3, id: 'window', s: 1.15 },
-  { k: 'bookcase',  i: 3,    j: -0.3, s: 1.4 },
-  { k: 'arch',      i: 0.37, j: 1, id: 'fire', s: 1.15 },  // 嵌在壁炉烟囱墙上
-  { k: 'display',   i: -0.3, j: 3, s: 1.4 },
+  { k: 'bookcaseW', i: 1.75, j: 0.85, s: 1.4 },               // 立在地上，右墙内侧
+  { k: 'window',    i: 2,    j: -0.3, id: 'window', s: 1.15 }, // 窗保留在墙上
+  { k: 'bookcase',  i: 3.2,  j: 0.7,  s: 1.4 },
+  { k: 'bookcaseH', i: 0.7,  j: 3.3,  s: 1.4 },               // 立在地上，左墙内侧
+  { k: 'arch',      i: 0.92, j: 1, id: 'fire', s: 1.15 },     // 嵌在凸进房间的烟囱墙上
+  { k: 'display',   i: 0.68, j: 4.3,  s: 1.4 },
 ];
 // 地面物件
 const props = [
@@ -57,9 +57,9 @@ const props = [
   { k: 'chair',      i: 1.9,  j: 3.2, s: 1.3 },
   { k: 'carpet',     i: 2,    j: 2,   s: 1.5 },
   { k: 'roundTable', i: 3.1,  j: 2.1, id: 'tea', s: 1.3 },
-  { k: 'bookStand',  i: 3.6,  j: 0.8, s: 1.3 },
-  { k: 'candleD',    i: 4.2,  j: 1.6,  id: 'candle', s: 1.35 },   // 右侧墙边，远离落地钟避免误点
-  { k: 'candle',     i: 0.6,  j: 3.6, s: 1.35 },
+  { k: 'bookStand',  i: 4.3,  j: 2.7, s: 1.3 },
+  { k: 'candleD',    i: 4.2,  j: 1.6,  id: 'candle', s: 1.35 },   // 右侧，远离落地钟避免误点
+  { k: 'candle',     i: 1.5,  j: 4.2, s: 1.35 },
   { k: 'clock',      i: 4.35, j: 0.35, id: 'clock' },  // 自绘落地钟
   { k: 'cat',        i: 2.3,  j: 1.95, id: 'cat' },    // 自绘猫
 ];
@@ -68,12 +68,12 @@ const scene = [...walls, ...props].sort((a, b) => (a.i + a.j) - (b.i + b.j));
 /* ---------- 关键锚点 ---------- */
 const P = {
   window: iso(2, -0.3),
-  fire:   { x: iso(0.37, 1).x - 44, y: iso(0.37, 1).y },  // 对齐拱门开口中心（烟囱墙正面）
+  fire:   { x: iso(0.92, 1).x - 44, y: iso(0.92, 1).y },  // 对齐拱门开口中心（烟囱墙正面）
   tea:    iso(3.1, 2.1),
   clock:  iso(4.35, 0.35),
   cat:    iso(2.3, 1.95),
   candleD:iso(4.2, 1.6),
-  candle: iso(0.6, 3.6),
+  candle: iso(1.5, 4.2),
 };
   const RAIN_RECT = { x: P.window.x - 32, y: P.window.y - 136, w: 64, h: 92 };
 
@@ -309,8 +309,8 @@ function drawWalls() {
 
 /* 壁炉烟囱墙 + 炉床石板 + 木窗窗台：让壁炉/木窗成为有体积的石作，而非"墙上的画" */
 function drawMasonry() {
-  // —— 壁炉烟囱墙（从左墙凸出 0.35 格，宽 j 0.25~1.75，高 210） ——
-  const Hb = 210, D = 0.35, J0 = 0.25, J1 = 1.75;
+  // —— 壁炉烟囱墙（从左墙凸出 0.9 格、深达房间内，宽 j 0.25~1.75，高 210） ——
+  const Hb = 210, D = 0.9, J0 = 0.25, J1 = 1.75;
   const a0 = iso(D, J0), a1 = iso(D, J1);   // 正面底边两端
   const b0 = iso(0, J0), b1 = iso(0, J1);   // 贴墙底边两端
   const fg = ctxS.createLinearGradient(0, a0.y - Hb, 0, a0.y);
@@ -336,8 +336,8 @@ function drawMasonry() {
     ctxS.lineTo(q.x, q.y - Hb); ctxS.lineTo(p.x, p.y - Hb);
     ctxS.closePath(); ctxS.fill();
   });
-  // —— 炉床石板（从炉口凸出到 i=1.05，承接火焰） ——
-  const h0 = iso(D, 0.5), h1 = iso(D, 1.5), h2 = iso(1.05, 1.5), h3 = iso(1.05, 0.5);
+  // —— 炉床石板（从炉口凸出到 i=1.6，承接火焰） ——
+  const h0 = iso(D, 0.5), h1 = iso(D, 1.5), h2 = iso(1.6, 1.5), h3 = iso(1.6, 0.5);
   ctxS.fillStyle = '#565148';
   ctxS.beginPath();
   ctxS.moveTo(h0.x, h0.y); ctxS.lineTo(h1.x, h1.y); ctxS.lineTo(h2.x, h2.y); ctxS.lineTo(h3.x, h3.y);
