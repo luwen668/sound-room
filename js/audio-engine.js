@@ -171,7 +171,56 @@ class AudioEngine {
     if (Math.random() < 0.6) strike(t0 + 0.7 + Math.random() * 0.9, volume * 0.5, 2);
   }
 
-  /* ---------- 合成：茶炉沸水咕嘟 ---------- */
+  /* ---------- 合成：雨（低鸣底噪 + 成簇雨滴拍打，替代"流水感"素材） ---------- */
+  startRain(name, { volume = 0.45 } = {}) {
+    this.ensure();
+    if (this.tracks[name]) return;
+    const out = this.ctx.createGain();
+    out.gain.setValueAtTime(0.0001, this.now);
+    out.gain.exponentialRampToValueAtTime(volume, this.now + 2);
+    out.connect(this.master);
+    // 底噪：白噪 → 低通 = 雨幕的低频轰鸣，LFO 缓慢起伏
+    const bed = this.ctx.createBufferSource();
+    bed.buffer = this.noiseBuffer; bed.loop = true;
+    const bedLP = this.ctx.createBiquadFilter();
+    bedLP.type = 'lowpass'; bedLP.frequency.value = 620; bedLP.Q.value = 0.5;
+    const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.15;
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 0.16;
+    const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.055;
+    lfo.connect(lfoG); lfoG.connect(bedGain.gain);
+    bed.connect(bedLP); bedLP.connect(bedGain); bedGain.connect(out);
+    bed.start(); lfo.start();
+    // 雨滴：2-4kHz 带通短爆发，成簇落下（簇内密集、簇间停顿）
+    let alive = true, timer = null, cluster = 0;
+    const drop = () => {
+      if (!alive) return;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1400 + Math.random() * 2800;
+      bp.Q.value = 1.1;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.04 + Math.random() * 0.08, this.now);
+      g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.03 + Math.random() * 0.045);
+      src.connect(bp); bp.connect(g); g.connect(out);
+      src.start(this.now, Math.random() * 0.9, 0.1);
+      cluster--;
+      let delay;
+      if (cluster <= 0) {
+        cluster = Math.random() < 0.78 ? 2 + Math.floor(Math.random() * 5) : 0;
+        delay = cluster > 0 ? 25 + Math.random() * 55 : 150 + Math.random() * 350;
+      } else delay = 25 + Math.random() * 55;
+      timer = setTimeout(drop, delay);
+    };
+    cluster = 3; drop();
+    this._register(name, out, () => {
+      alive = false; clearTimeout(timer);
+      try { bed.stop(); lfo.stop(); } catch (e) {}
+    }, volume);
+  }
+
+  /* ---------- 合成：茶炉沸水咕嘟（低频成簇 + 加热低鸣） ---------- */
   startBubble(name, { volume = 0.4 } = {}) {
     this.ensure();
     if (this.tracks[name]) return;
@@ -179,23 +228,41 @@ class AudioEngine {
     out.gain.setValueAtTime(0.0001, this.now);
     out.gain.exponentialRampToValueAtTime(volume, this.now + 2);
     out.connect(this.master);
-    let alive = true, timer = null;
+    // 加热低鸣
+    const bed = this.ctx.createBufferSource();
+    bed.buffer = this.noiseBuffer; bed.loop = true;
+    const bedLP = this.ctx.createBiquadFilter();
+    bedLP.type = 'lowpass'; bedLP.frequency.value = 240;
+    const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.05;
+    bed.connect(bedLP); bedLP.connect(bedGain); bedGain.connect(out);
+    bed.start();
+    // 咕嘟：150-420Hz 带通簇，频率在簇间上下蠕动
+    let alive = true, timer = null, cluster = 0, f = 260;
     const blip = () => {
       if (!alive) return;
+      f = Math.min(420, Math.max(150, f + (Math.random() - 0.5) * 120));
       const src = this.ctx.createBufferSource();
       src.buffer = this.noiseBuffer;
       const bp = this.ctx.createBiquadFilter();
-      bp.type = 'bandpass'; bp.frequency.value = 240 + Math.random() * 520; bp.Q.value = 7;
+      bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 3.5;
       const g = this.ctx.createGain();
-      const amp = 0.05 + Math.random() * 0.1;
-      g.gain.setValueAtTime(amp, this.now);
-      g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.05 + Math.random() * 0.1);
+      g.gain.setValueAtTime(0.06 + Math.random() * 0.1, this.now);
+      g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.08 + Math.random() * 0.12);
       src.connect(bp); bp.connect(g); g.connect(out);
-      src.start(this.now, Math.random() * 0.8, 0.18);
-      timer = setTimeout(blip, 70 + Math.random() * 240);
+      src.start(this.now, Math.random() * 0.8, 0.25);
+      cluster--;
+      let delay;
+      if (cluster <= 0) {
+        cluster = Math.random() < 0.7 ? 3 + Math.floor(Math.random() * 5) : 0;
+        delay = cluster > 0 ? 45 + Math.random() * 70 : 250 + Math.random() * 600;
+      } else delay = 45 + Math.random() * 70;
+      timer = setTimeout(blip, delay);
     };
-    blip();
-    this._register(name, out, () => { alive = false; clearTimeout(timer); }, volume);
+    cluster = 3; blip();
+    this._register(name, out, () => {
+      alive = false; clearTimeout(timer);
+      try { bed.stop(); } catch (e) {}
+    }, volume);
   }
 
   /* ---------- 合成：烛火（极轻白噪床 + 偶尔细噼啪） ---------- */

@@ -100,7 +100,7 @@ const trackByObj = o => TRACKS.find(t => t.obj === o);
 /* ---------- 状态 ---------- */
 const state = {
   on:   { rain: false, fire: true, cat: false, tick: false, tea: false, candle: false },
-  vols: { rain: 0.6, fire: 0.55, cat: 0.55, tick: 0.3, tea: 0.4, candle: 0.35 },
+  vols: { rain: 0.45, fire: 0.55, cat: 0.55, tick: 0.3, tea: 0.4, candle: 0.35 },
   viewMode: 'fit',  // fit 整屋适配 / pan 放大巡视
   rainLevel: 0,   // 0-1 雨强度（粒子/音量插值）
   teaLevel: 0,    // 茶炉蒸汽强度
@@ -538,8 +538,7 @@ function startTrack(key) {
   const v = state.vols[key];
   switch (key) {
     case 'rain':
-      engine.startLoop('rain', 'assets/audio/rain_loop.mp3',
-        { volume: v, fadeIn: 2, filterFreq: 1200 });
+      engine.startRain('rain', { volume: v });   // 合成雨（低鸣底噪+成簇雨滴）
       break;
     case 'fire':
       engine.startLoop('fire', 'assets/audio/fire_loop.m4a', { volume: v, fadeIn: 2 });
@@ -567,10 +566,10 @@ function setVol(key, v, ramp = 0.15) {
 
 /* ---------- 预设配方（设计文档 4.3，映射到六轨） ---------- */
 const PRESETS = {
-  focus: { label: '专注', vols: { rain: .6,  fire: 0,   tea: .3,  candle: .2,  cat: 0,   tick: 0 } },
-  sleep: { label: '助眠', vols: { rain: .5,  fire: .6,  tea: .2,  candle: .3,  cat: .5,  tick: 0 } },
-  read:  { label: '阅读', vols: { rain: .3,  fire: .25, tea: .4,  candle: .4,  cat: 0,   tick: .25 } },
-  night: { label: '深夜', vols: { rain: .4,  fire: .35, tea: .3,  candle: .25, cat: 0,   tick: .15 } },
+  focus: { label: '专注', vols: { rain: .45, fire: 0,   tea: .3,  candle: .2,  cat: 0,   tick: 0 } },
+  sleep: { label: '助眠', vols: { rain: .4,  fire: .6,  tea: .2,  candle: .3,  cat: .5,  tick: 0 } },
+  read:  { label: '阅读', vols: { rain: .25, fire: .25, tea: .4,  candle: .4,  cat: 0,   tick: .25 } },
+  night: { label: '深夜', vols: { rain: .35, fire: .35, tea: .3,  candle: .25, cat: 0,   tick: .15 } },
 };
 
 function applyPreset(name) {
