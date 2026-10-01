@@ -21,7 +21,18 @@ body {
   font-family: 'SF Mono', Menlo, monospace;
   font-size: 14px; color: #7B8CDE; letter-spacing: .1em;
 }
-.top-right { display: flex; align-items: center; gap: 16px; }
+.top-right { display: flex; align-items: center; gap: 10px; }
+#viewToggle {
+  background: transparent; color: #9BA0BC;
+  border: 1px solid rgba(123,140,222,.35); border-radius: 16px;
+  padding: 5px 14px; font-size: 12px; letter-spacing: .15em;
+  cursor: pointer; transition: all .2s;
+}
+#viewToggle:hover { color: #E8DCC4; border-color: rgba(123,140,222,.6); }
+#viewToggle.active {
+  color: #7B8CDE; border-color: #7B8CDE;
+  background: rgba(123,140,222,.12);
+}
 #shareBtn {
   background: rgba(242,166,90,.1); color: #F2A65A;
   border: 1px solid rgba(242,166,90,.4); border-radius: 16px;
@@ -46,6 +57,7 @@ body {
 #stage {
   flex: 1;
   position: relative;
+  overflow: hidden;
 }
 #stage canvas {
   width: min(96vw, calc((100vh - 140px) * 1000 / 860));
@@ -53,6 +65,13 @@ body {
   position: absolute;
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
+  touch-action: none;  /* 触摸平移由 JS 接管 */
+}
+/* 巡视模式：房间放大、可拖动（手动开关 data-view=pan，或窄屏自动） */
+body[data-view=pan] #stage canvas { width: max(98vw, 680px); }
+@media (max-width: 720px) {
+  body:not([data-view=fit]) #stage canvas { width: max(98vw, 680px); }
+  #hint span, .brand span { display: none; }
 }
 #fx { pointer-events: auto; }
 #scene, #light { pointer-events: none; }  /* 交互只走 fx 层，光照层不挡鼠标 */

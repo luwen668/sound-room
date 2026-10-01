@@ -101,6 +101,7 @@ const trackByObj = o => TRACKS.find(t => t.obj === o);
 const state = {
   on:   { rain: false, fire: true, cat: false, tick: false, tea: false, candle: false },
   vols: { rain: 0.6, fire: 0.55, cat: 0.55, tick: 0.3, tea: 0.4, candle: 0.35 },
+  viewMode: 'fit',  // fit 整屋适配 / pan 放大巡视
   rainLevel: 0,   // 0-1 雨强度（粒子/音量插值）
   teaLevel: 0,    // 茶炉蒸汽强度
   candleLevel: 0, // 烛火强度
@@ -451,6 +452,11 @@ function saveState() {
 }
 
 function loadState() {
+  // 视图模式：手动选择优先，否则窄屏默认巡视模式
+  try {
+    const v = localStorage.getItem('sound-room-view');
+    state.viewMode = (v === 'pan' || v === 'fit') ? v : (window.innerWidth <= 720 ? 'pan' : 'fit');
+  } catch (e) { state.viewMode = window.innerWidth <= 720 ? 'pan' : 'fit'; }
   // 优先级：URL hash（分享链接）> localStorage（上次房间） > 默认
   if (decodeState(location.hash)) return;
   try {
@@ -646,6 +652,33 @@ function syncMixer() {
   }
 }
 
+/* ---------- 视图模式：fit 整屋适配 / pan 放大巡视（拖动） ---------- */
+const pan = { x: 0, y: 0 };
+function panLimits() {
+  const r = cvsFx.getBoundingClientRect();
+  const stage = document.getElementById('stage');
+  return {
+    x: Math.max(0, (r.width - stage.clientWidth) / 2),
+    y: Math.max(0, (r.height - stage.clientHeight) / 2),
+  };
+}
+function applyPan() {
+  const t = `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px))`;
+  for (const c of [cvsScene, cvsFx, cvsLight]) c.style.transform = t;
+}
+function applyViewMode() {
+  const panMode = state.viewMode === 'pan';
+  document.body.dataset.view = state.viewMode;
+  document.getElementById('viewToggle').classList.toggle('active', panMode);
+  if (!panMode) { pan.x = 0; pan.y = 0; }
+  requestAnimationFrame(applyPan);
+}
+function toggleViewMode() {
+  state.viewMode = state.viewMode === 'pan' ? 'fit' : 'pan';
+  try { localStorage.setItem('sound-room-view', state.viewMode); } catch (e) {}
+  applyViewMode();
+}
+
 /* ---------- 悬停 / 点击 / 滚轮 ---------- */
 const tip = document.getElementById('tip');
 function objAt(mx, my) {
@@ -655,6 +688,66 @@ function objAt(mx, my) {
   }
   return null;
 }
+
+/* 触摸：单指拖动 = 巡视房间；轻点 = 点击物件 */
+let _touchStart = null, _touchMoved = false, _lastTouchEnd = 0;
+function showTipFor(o, clientX, clientY) {
+  const tr = trackByObj(o.id);
+  const on = tr && state.on[tr.key];
+  tip.style.display = 'block';
+  tip.style.left = (clientX + 14) + 'px';
+  tip.style.top = (clientY - 10) + 'px';
+  tip.innerHTML = on
+    ? `${o.name} · ${o.sound} <em>开</em>`
+    : `${o.name} · ${o.sound}`;
+}
+function tapAt(clientX, clientY) {
+  const r = cvsFx.getBoundingClientRect();
+  const mx = (clientX - r.left) * (VIEW.w / r.width);
+  const my = (clientY - r.top) * (VIEW.h / r.height);
+  const o = objAt(mx, my);
+  if (!o) { tip.style.display = 'none'; return; }
+  const tr = trackByObj(o.id);
+  if (tr) {
+    engine.ensure();
+    autoStartOnce();
+    toggleTrack(tr.key);
+  }
+  state.hovered = o; drawScene();
+  showTipFor(o, clientX, clientY);
+  clearTimeout(tapAt._t);
+  tapAt._t = setTimeout(() => { tip.style.display = 'none'; }, 1400);
+}
+
+cvsFx.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  _touchStart = { x: t.clientX, y: t.clientY, panX: pan.x, panY: pan.y };
+  _touchMoved = false;
+}, { passive: true });
+
+cvsFx.addEventListener('touchmove', e => {
+  if (!_touchStart) return;
+  const t = e.touches[0];
+  const dx = t.clientX - _touchStart.x, dy = t.clientY - _touchStart.y;
+  if (!_touchMoved && Math.hypot(dx, dy) > 10) _touchMoved = true;
+  if (_touchMoved) {
+    e.preventDefault();
+    const lim = panLimits();
+    pan.x = Math.min(lim.x, Math.max(-lim.x, _touchStart.panX + dx));
+    pan.y = Math.min(lim.y, Math.max(-lim.y, _touchStart.panY + dy));
+    applyPan();
+    tip.style.display = 'none';
+  }
+}, { passive: false });
+
+cvsFx.addEventListener('touchend', e => {
+  _lastTouchEnd = performance.now();
+  if (_touchStart && !_touchMoved) {
+    const t = e.changedTouches[0];
+    tapAt(t.clientX, t.clientY);
+  }
+  _touchStart = null;
+});
 
 cvsFx.addEventListener('mousemove', e => {
   const r = cvsFx.getBoundingClientRect();
@@ -676,6 +769,7 @@ cvsFx.addEventListener('mousemove', e => {
 });
 
 cvsFx.addEventListener('click', e => {
+  if (performance.now() - _lastTouchEnd < 600) return;  // 触摸已处理，忽略合成点击
   const o = state.hovered;
   if (!o) return;
   engine.ensure();
@@ -883,10 +977,49 @@ if (qp.get('selftest') === '5') {
   }, 800));
 }
 
+// M4c 自测：?selftest=6 → 触摸：拖动巡视 + 轻点开关（窄屏布局下验证）
+if (qp.get('selftest') === '6') {
+  Promise.all(loadPromises).then(() => setTimeout(() => {
+    state.viewMode = 'pan'; applyViewMode();
+    const r0 = cvsFx.getBoundingClientRect();
+    const mk = (type, x, y) => {
+      const touch = new Touch({ identifier: 1, target: cvsFx, clientX: x, clientY: y });
+      return new TouchEvent(type, {
+        touches: type === 'touchend' ? [] : [touch],
+        changedTouches: [touch], bubbles: true, cancelable: true,
+      });
+    };
+    // 拖动巡视
+    cvsFx.dispatchEvent(mk('touchstart', 300, 400));
+    cvsFx.dispatchEvent(mk('touchmove', 220, 360));
+    const panned = Math.abs(pan.x) > 5;
+    cvsFx.dispatchEvent(mk('touchend', 220, 360));
+    // 轻点猫（注意画布已随 pan 平移，需用实时 rect）
+    const r = cvsFx.getBoundingClientRect();
+    const sx = r.left + (P.cat.x / VIEW.w) * r.width;
+    const sy = r.top + ((P.cat.y - 30) / VIEW.h) * r.height;
+    cvsFx.dispatchEvent(mk('touchstart', sx, sy));
+    cvsFx.dispatchEvent(mk('touchend', sx, sy));
+    setTimeout(() => {
+      document.title = 'SELFTEST6 ' + JSON.stringify({
+        panned, panX: Math.round(pan.x),
+        canvasW: Math.round(r0.width), catOn: state.on.cat,
+      });
+    }, 300);
+  }, 1000));
+}
+
 Promise.all(loadPromises).then(() => {
   buildMixer();
   syncMixer();
   document.getElementById('shareBtn').addEventListener('click', shareRoom);
+  document.getElementById('viewToggle').addEventListener('click', toggleViewMode);
+  applyViewMode();
+  window.addEventListener('resize', () => { const lim = panLimits();
+    pan.x = Math.min(lim.x, Math.max(-lim.x, pan.x));
+    pan.y = Math.min(lim.y, Math.max(-lim.y, pan.y));
+    applyPan();
+  });
   if (qp.get('mixer') === '1') {
     const mx = document.getElementById('mixer');
     mx.style.transition = 'none';
