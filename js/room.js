@@ -283,6 +283,22 @@ function drawScene() {
       ctxS.fillRect(p.x - 160, p.y - 280, 320, 300);
     }
   }
+  // 常驻名牌：标明哪些物件可点击（可被「标注」开关关闭）
+  if (state.showLabels) {
+    ctxS.font = '11px "PingFang SC", sans-serif';
+    ctxS.textAlign = 'center';
+    for (const o of OBJECTS) {
+      const w = ctxS.measureText(o.name).width + 14;
+      const lx = o.x, ly = o.y + 18;
+      ctxS.fillStyle = 'rgba(14,17,34,.55)';
+      if (ctxS.roundRect) {
+        ctxS.beginPath(); ctxS.roundRect(lx - w / 2, ly - 10, w, 16, 8); ctxS.fill();
+      } else ctxS.fillRect(lx - w / 2, ly - 10, w, 16);
+      ctxS.fillStyle = 'rgba(232,230,222,.85)';
+      ctxS.fillText(o.name, lx, ly + 2.5);
+    }
+    ctxS.textAlign = 'left';
+  }
 }
 
 /* ---------- 粒子 ---------- */
@@ -530,6 +546,20 @@ function shareRoom() {
       .then(() => showToast('🔗 链接已复制，发给朋友吧'))
       .catch(() => showToast(url));
   } else showToast(url);
+}
+
+/* ---------- 名牌标注开关 ---------- */
+function toggleLabels() {
+  state.showLabels = !state.showLabels;
+  try { localStorage.setItem('sound-room-labels', state.showLabels ? '1' : '0'); } catch (e) {}
+  document.getElementById('labelToggle').classList.toggle('active', state.showLabels);
+  drawScene();
+}
+function loadLabels() {
+  let v = true;
+  try { v = localStorage.getItem('sound-room-labels') !== '0'; } catch (e) {}
+  state.showLabels = v;
+  document.getElementById('labelToggle').classList.toggle('active', v);
 }
 
 /* ---------- 静音总开关（只断声音，房间视觉状态不变） ---------- */
@@ -1119,7 +1149,9 @@ Promise.all(loadPromises).then(() => {
   document.getElementById('shareBtn').addEventListener('click', shareRoom);
   document.getElementById('viewToggle').addEventListener('click', toggleViewMode);
   document.getElementById('muteBtn').addEventListener('click', toggleMute);
+  document.getElementById('labelToggle').addEventListener('click', toggleLabels);
   loadMute();
+  loadLabels();
   applyViewMode();
   window.addEventListener('resize', () => { const lim = panLimits();
     pan.x = Math.min(lim.x, Math.max(-lim.x, pan.x));

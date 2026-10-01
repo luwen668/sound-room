@@ -29,14 +29,14 @@ body {
   opacity: .85; transition: opacity .2s, transform .15s;
 }
 #muteBtn:hover { opacity: 1; transform: scale(1.1); }
-#viewToggle {
+#viewToggle, #labelToggle {
   background: transparent; color: #9BA0BC;
   border: 1px solid rgba(123,140,222,.35); border-radius: 16px;
   padding: 5px 14px; font-size: 12px; letter-spacing: .15em;
   cursor: pointer; transition: all .2s;
 }
-#viewToggle:hover { color: #E8DCC4; border-color: rgba(123,140,222,.6); }
-#viewToggle.active {
+#viewToggle:hover, #labelToggle:hover { color: #E8DCC4; border-color: rgba(123,140,222,.6); }
+#viewToggle.active, #labelToggle.active {
   color: #7B8CDE; border-color: #7B8CDE;
   background: rgba(123,140,222,.12);
 }
