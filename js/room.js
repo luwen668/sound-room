@@ -147,60 +147,60 @@ function drawCat(ctx, x, y, t, purring) {
   ctx.scale(1.25, 1.25 * br);
 
   /* 尾巴：从身后绕到身前（蜷团经典姿势），尾尖深色 */
-  const tailSway = Math.sin(t * 0.9) * 2;
-  ctx.strokeStyle = FUR_D; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  const tailSway = Math.sin(t * 0.9) * 1.5;
+  ctx.strokeStyle = FUR_D; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(26, -10);
-  ctx.quadraticCurveTo(34, 2, 12, 3);
-  ctx.quadraticCurveTo(-3, 3, -11, -2 + tailSway);
+  ctx.moveTo(26, -16);
+  ctx.quadraticCurveTo(38, 0, 16, 4);
+  ctx.quadraticCurveTo(-2, 7, -18, 1 + tailSway);
   ctx.stroke();
-  ctx.strokeStyle = STRIPE; ctx.lineWidth = 2.2;
+  ctx.strokeStyle = STRIPE; ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(-11, -2 + tailSway);
-  ctx.lineTo(-15.5, -4 + tailSway);
+  ctx.moveTo(-18, 1 + tailSway);
+  ctx.lineTo(-23, -1 + tailSway);
   ctx.stroke();
 
-  /* 身体（趴卧长条，不是圆球） */
+  /* 身体（蜷团，但控制胖瘦） */
   ctx.fillStyle = FUR;
-  ctx.beginPath(); ctx.ellipse(1, -11, 29, 14.5, -0.06, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = LINE; ctx.lineWidth = 1.8; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(1, -13, 30, 17.5, -0.04, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = LINE; ctx.lineWidth = 2; ctx.stroke();
   /* 虎斑纹（背上三道弧） */
-  ctx.strokeStyle = STRIPE; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
-  [-3, 6, 14].forEach(sx => {
+  ctx.strokeStyle = STRIPE; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  [-4, 6, 15].forEach(sx => {
     ctx.beginPath();
-    ctx.arc(sx, -16, 6, Math.PI * 1.12, Math.PI * 1.88);
+    ctx.arc(sx, -19, 7, Math.PI * 1.12, Math.PI * 1.88);
     ctx.stroke();
   });
 
-  /* 前爪（蜷在身前） */
+  /* 前爪（蜷在下巴下） */
   ctx.fillStyle = FUR_D;
-  ctx.beginPath(); ctx.ellipse(-10, -2, 7.5, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-12, -4, 8, 3.8, 0, 0, Math.PI * 2); ctx.fill();
 
-  /* 头（小一号，贴在前端） */
+  /* 头（埋在前爪上，贴住身体前端） */
   ctx.fillStyle = FUR;
-  ctx.beginPath(); ctx.arc(-21, -19, 12.5, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = LINE; ctx.lineWidth = 1.8; ctx.stroke();
+  ctx.beginPath(); ctx.arc(-19, -20, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = LINE; ctx.lineWidth = 2; ctx.stroke();
   /* 耳（三角 + 内耳） */
   ctx.fillStyle = FUR_D;
-  ctx.beginPath(); ctx.moveTo(-32, -26); ctx.lineTo(-29.5, -38 + twitch); ctx.lineTo(-22.5, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-19, -30); ctx.lineTo(-14.5, -39); ctx.lineTo(-10, -27.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-30, -27); ctx.lineTo(-27, -39 + twitch); ctx.lineTo(-20.5, -31); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-17, -31); ctx.lineTo(-12.5, -40); ctx.lineTo(-8, -28.5); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#E8C39A';
-  ctx.beginPath(); ctx.moveTo(-29.5, -29.5); ctx.lineTo(-28, -35 + twitch); ctx.lineTo(-25, -30.5); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-17, -30.5); ctx.lineTo(-15.5, -35); ctx.lineTo(-13, -29.5); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-27.5, -30.5); ctx.lineTo(-26, -36 + twitch); ctx.lineTo(-23, -31.5); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-15, -31.5); ctx.lineTo(-13.5, -36); ctx.lineTo(-11, -30.5); ctx.closePath(); ctx.fill();
 
   /* 闭眼（睡着的猫，两道下弧） */
   ctx.strokeStyle = LINE; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(-25.5, -21, 2.5, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
-  ctx.beginPath(); ctx.arc(-16.5, -21, 2.5, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-23.5, -22, 2.6, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-14.5, -22, 2.6, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
   /* 鼻 + 嘴（小 ω） */
   ctx.fillStyle = '#B0763D';
-  ctx.beginPath(); ctx.moveTo(-22.3, -16.8); ctx.lineTo(-19.7, -16.8); ctx.lineTo(-21, -14.9); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-20.3, -17.8); ctx.lineTo(-17.7, -17.8); ctx.lineTo(-19, -16); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = LINE; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(-22.3, -15.1, 1.4, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
-  ctx.beginPath(); ctx.arc(-19.7, -15.1, 1.4, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-20.3, -16.2, 1.5, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-17.7, -16.2, 1.5, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
   /* 胡须 */
-  ctx.strokeStyle = 'rgba(232,230,222,.7)'; ctx.lineWidth = 0.7;
-  [[-32, -17.5, -40, -19], [-32, -15.2, -40, -14], [-10, -17.5, -3, -19], [-10, -15.2, -3, -14]]
+  ctx.strokeStyle = 'rgba(232,230,222,.7)'; ctx.lineWidth = 0.75;
+  [[-31, -18.5, -39, -20], [-31, -16.2, -39, -15], [-7, -18.5, 0, -20], [-7, -16.2, 0, -15]]
     .forEach(([x1, y1, x2, y2]) => {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     });
@@ -209,7 +209,7 @@ function drawCat(ctx, x, y, t, purring) {
   if (purring && Math.sin(t * 0.5) > 0.6) {
     ctx.fillStyle = 'rgba(200,205,230,.85)';
     ctx.font = '600 11px Georgia';
-    ctx.fillText('z', -36, -40 - (t % 1) * 8);
+    ctx.fillText('z', -34, -42 - (t % 1) * 8);
   }
   ctx.restore();
 }

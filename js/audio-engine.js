@@ -299,14 +299,14 @@ class AudioEngine {
     out.gain.setValueAtTime(0.0001, this.now);
     out.gain.exponentialRampToValueAtTime(volume, this.now + 2);
     out.connect(this.master);
-    // 气流床：暗噪 + 7Hz 微颤（火苗的呼吸感，而不是"沙沙"背景音）
+    // 气流床：暗噪 + 1.3Hz 缓摇（火焰的缓慢起伏，而不是"沙沙"背景音）
     const bed = this.ctx.createBufferSource();
     bed.buffer = this.noiseBuffer; bed.loop = true;
     const lp = this.ctx.createBiquadFilter();
     lp.type = 'lowpass'; lp.frequency.value = 520;
     const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.02;
-    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 6.5;
-    const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.008;
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 1.3;   // 缓慢摇曳，像火焰起伏而非快速燃烧
+    const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.012;
     lfo.connect(lfoG); lfoG.connect(bedGain.gain);
     bed.connect(lp); lp.connect(bedGain); bedGain.connect(out);
     bed.start(); lfo.start();
