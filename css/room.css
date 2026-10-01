@@ -67,10 +67,11 @@ body {
   transform: translate(-50%, -50%);
   touch-action: none;  /* 触摸平移由 JS 接管 */
 }
-/* 巡视模式：房间放大、可拖动（手动开关 data-view=pan，或窄屏自动） */
-body[data-view=pan] #stage canvas { width: max(98vw, 680px); }
+/* 巡视模式：房间放大、可拖动（手动开关 data-view=pan，或窄屏自动）
+   缩放系数随屏宽自适应（165vw），桌面端上限 1100px */
+body[data-view=pan] #stage canvas { width: min(1100px, max(98vw, 165vw)); }
 @media (max-width: 720px) {
-  body:not([data-view=fit]) #stage canvas { width: max(98vw, 680px); }
+  body:not([data-view=fit]) #stage canvas { width: min(1100px, max(98vw, 165vw)); }
   #hint span, .brand span { display: none; }
 }
 #fx { pointer-events: auto; }
@@ -100,10 +101,12 @@ body[data-view=pan] #stage canvas { width: max(98vw, 680px); }
 }
 #mxToggle:hover { background: rgba(123,140,222,.22); border-color: rgba(123,140,222,.6); }
 
-/* 混音台（底部上滑面板） */
+/* 混音台（底部上滑面板，宽度自适应 + 矮屏可滚动） */
 #mixer {
   position: fixed; left: 50%; bottom: 0; z-index: 30;
   width: min(680px, 94vw);
+  max-height: 68vh;
+  overflow-y: auto;
   transform: translate(-50%, 100%);
   transition: transform .35s cubic-bezier(.22,.9,.3,1);
   background: rgba(16,19,38,.96);
@@ -143,7 +146,7 @@ body[data-view=pan] #stage canvas { width: max(98vw, 680px); }
   color: #F2A65A; border-color: #F2A65A;
   background: rgba(242,166,90,.1);
 }
-#mxSliders { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+#mxSliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px 22px; }
 .mx-row {
   display: flex; align-items: center; gap: 8px;
   font-size: 12px; color: #9BA0BC;
@@ -170,6 +173,15 @@ body[data-view=pan] #stage canvas { width: max(98vw, 680px); }
   transition: background .15s;
 }
 .mx-row.on input[type=range]::-webkit-slider-thumb { background: #F2A65A; }
+
+/* 滑条网格自适应：面板宽度够则两列，窄则自动单列，无固定断点 */
+#mxSliders { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+
+/* 触摸设备上滑条加高（指针粗糙时命中更容易） */
+@media (pointer: coarse) {
+  .mx-row input[type=range] { height: 6px; }
+  .mx-row input[type=range]::-webkit-slider-thumb { width: 20px; height: 20px; }
+}
 
 /* 睡眠定时行 */
 .mx-timer {
