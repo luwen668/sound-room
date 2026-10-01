@@ -145,38 +145,79 @@ function fitCanvas(c) {
 }
 fitCanvas(cvsScene); fitCanvas(cvsFx); fitCanvas(cvsLight);
 
-/* ---------- 自绘：猫 ---------- */
+/* ---------- 自绘：猫（蜷睡：闭眼、鼻嘴、胡须、虎斑、绕身尾） ---------- */
 function drawCat(ctx, x, y, t, purring) {
   const br = 1 + Math.sin(t * 1.6) * 0.05;             // 呼吸
   const twitch = Math.sin(t * 0.7) > 0.97 ? 4 : 0;      // 偶尔耳动
+  const FUR = '#B0ACA0', FUR_D = '#989486', STRIPE = '#8F8B7E', LINE = '#6E6A60';
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(1.7, 1.7 * br);
-  // 尾巴：缓慢摆动
-  ctx.strokeStyle = '#989486'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+
+  /* 尾巴：从身后绕到身前（蜷团经典姿势），尾尖深色 */
+  const tailSway = Math.sin(t * 0.9) * 2;
+  ctx.strokeStyle = FUR_D; ctx.lineWidth = 8; ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(30, -8);
-  ctx.quadraticCurveTo(50, -12 + Math.sin(t * 0.9) * 5, 46, -28 + Math.sin(t * 0.9) * 4);
+  ctx.moveTo(32, -12);
+  ctx.quadraticCurveTo(40, 3, 14, 4);
+  ctx.quadraticCurveTo(-4, 4, -13, -3 + tailSway);
   ctx.stroke();
-  // 身体（蜷团）
-  ctx.fillStyle = '#B0ACA0';
-  ctx.beginPath(); ctx.ellipse(0, -16, 34, 20, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#7A766B'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = '#989486';
-  ctx.beginPath(); ctx.ellipse(-4, -12, 26, 13, 0, 0, Math.PI * 2); ctx.fill();
-  // 头
-  ctx.fillStyle = '#B0ACA0';
-  ctx.beginPath(); ctx.arc(-26, -22, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = STRIPE; ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-13, -3 + tailSway);
+  ctx.lineTo(-18, -5 + tailSway);
   ctx.stroke();
-  // 耳
-  ctx.fillStyle = '#989486';
-  ctx.beginPath(); ctx.moveTo(-36, -34); ctx.lineTo(-33, -45 + twitch); ctx.lineTo(-27, -35); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-25, -36); ctx.lineTo(-20, -46); ctx.lineTo(-16, -35); ctx.closePath(); ctx.fill();
-  // 呼噜时的 Zzz
+
+  /* 身体（蜷团） */
+  ctx.fillStyle = FUR;
+  ctx.beginPath(); ctx.ellipse(0, -14, 34, 21, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = LINE; ctx.lineWidth = 2; ctx.stroke();
+  /* 虎斑纹（背上三道弧） */
+  ctx.strokeStyle = STRIPE; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  [-6, 5, 15].forEach(sx => {
+    ctx.beginPath();
+    ctx.arc(sx, -20, 8, Math.PI * 1.12, Math.PI * 1.88);
+    ctx.stroke();
+  });
+
+  /* 前爪（蜷在身前） */
+  ctx.fillStyle = FUR_D;
+  ctx.beginPath(); ctx.ellipse(-13, -3, 9, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  /* 头 */
+  ctx.fillStyle = FUR;
+  ctx.beginPath(); ctx.arc(-24, -24, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = LINE; ctx.lineWidth = 2; ctx.stroke();
+  /* 耳（三角 + 内耳） */
+  ctx.fillStyle = FUR_D;
+  ctx.beginPath(); ctx.moveTo(-37, -33); ctx.lineTo(-34, -46 + twitch); ctx.lineTo(-26, -37); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-22, -37); ctx.lineTo(-17, -47); ctx.lineTo(-12, -34); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#9A8478';
+  ctx.beginPath(); ctx.moveTo(-34, -36); ctx.lineTo(-32.5, -42 + twitch); ctx.lineTo(-29, -37); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-20, -37); ctx.lineTo(-18, -42); ctx.lineTo(-15.5, -36); ctx.closePath(); ctx.fill();
+
+  /* 闭眼（睡着的猫，两道下弧） */
+  ctx.strokeStyle = LINE; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(-29, -27, 3, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-19, -27, 3, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
+  /* 鼻 + 嘴（小 ω） */
+  ctx.fillStyle = '#9A8478';
+  ctx.beginPath(); ctx.moveTo(-25.6, -21.5); ctx.lineTo(-22.4, -21.5); ctx.lineTo(-24, -19.2); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = LINE; ctx.lineWidth = 1.1;
+  ctx.beginPath(); ctx.arc(-25.6, -19.4, 1.7, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-22.4, -19.4, 1.7, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  /* 胡须 */
+  ctx.strokeStyle = 'rgba(232,230,222,.7)'; ctx.lineWidth = 0.8;
+  [[-38, -22, -47, -24], [-38, -19.5, -47, -18], [-11, -22, -3, -24], [-11, -19.5, -3, -18]]
+    .forEach(([x1, y1, x2, y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    });
+
+  /* 呼噜时的 Zzz */
   if (purring && Math.sin(t * 0.5) > 0.6) {
     ctx.fillStyle = 'rgba(200,205,230,.85)';
     ctx.font = '600 13px Georgia';
-    ctx.fillText('z', -40, -50 - (t % 1) * 10);
+    ctx.fillText('z', -44, -52 - (t % 1) * 10);
   }
   ctx.restore();
 }
