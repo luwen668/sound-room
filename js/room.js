@@ -621,8 +621,19 @@ function buildMixer() {
   }
   document.querySelectorAll('.mx-presets button').forEach(b =>
     b.addEventListener('click', () => applyPreset(b.dataset.preset)));
-  document.querySelectorAll('.mx-timer button').forEach(b =>
+  document.querySelectorAll('.mx-timer button[data-min]').forEach(b =>
     b.addEventListener('click', () => setSleepTimer(+b.dataset.min)));
+  // 自定义定时（1-480 分钟）
+  const customIn = document.getElementById('mxCustomMin');
+  const applyCustomTimer = () => {
+    let v = parseInt(customIn.value, 10);
+    if (Number.isNaN(v)) return;
+    v = Math.min(480, Math.max(1, v));
+    customIn.value = v;
+    setSleepTimer(v);
+  };
+  document.getElementById('mxCustomBtn').addEventListener('click', applyCustomTimer);
+  customIn.addEventListener('keydown', e => { if (e.key === 'Enter') applyCustomTimer(); });
   const mx = document.getElementById('mixer');
   document.getElementById('mxToggle').addEventListener('click', () => {
     mx.classList.toggle('open');
@@ -1014,6 +1025,23 @@ if (qp.get('selftest') === '6') {
       });
     }, 300);
   }, 1000));
+}
+
+// M5 自测：?selftest=7 → 自定义定时：输入 45 → 设定 → 状态生效
+if (qp.get('selftest') === '7') {
+  Promise.all(loadPromises).then(() => setTimeout(() => {
+    const input = document.getElementById('mxCustomMin');
+    input.value = '45';
+    document.getElementById('mxCustomBtn').click();
+    setTimeout(() => {
+      document.title = 'SELFTEST7 ' + JSON.stringify({
+        sleep: !!state.sleep,
+        totalMin: state.sleep ? Math.round(state.sleep.total / 60000) : null,
+        label: document.getElementById('mxTimerLabel').textContent,
+        inputVal: input.value,
+      });
+    }, 300);
+  }, 800));
 }
 
 Promise.all(loadPromises).then(() => {

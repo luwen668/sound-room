@@ -185,10 +185,20 @@ body[data-view=pan] #stage canvas { width: min(1100px, max(98vw, 165vw)); }
 
 /* 睡眠定时行 */
 .mx-timer {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   padding-top: 10px; margin-top: 10px;
   border-top: 1px solid rgba(123,140,222,.15);
 }
+#mxCustomMin {
+  width: 62px; padding: 3px 8px;
+  background: rgba(123,140,222,.08);
+  border: 1px solid rgba(123,140,222,.3); border-radius: 12px;
+  color: #E8DCC4; font-size: 12px; text-align: center;
+  outline: none; -moz-appearance: textfield;
+}
+#mxCustomMin::-webkit-outer-spin-button, #mxCustomMin::-webkit-inner-spin-button { -webkit-appearance: none; }
+#mxCustomMin:focus { border-color: rgba(123,140,222,.65); }
+#mxCustomMin::placeholder { color: #565A72; }
 .mx-timer button {
   background: transparent; color: #9BA0BC;
   border: 1px solid rgba(123,140,222,.3); border-radius: 14px;

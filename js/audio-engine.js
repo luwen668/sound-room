@@ -180,13 +180,14 @@ class AudioEngine {
     out.gain.exponentialRampToValueAtTime(volume, this.now + 2);
     out.connect(this.master);
     // 底噪：白噪 → 低通 = 雨幕的低频轰鸣，LFO 缓慢起伏
+    // （底噪要轻，否则会听成"沸腾的低鸣"——雨的主体是上面的雨滴层）
     const bed = this.ctx.createBufferSource();
     bed.buffer = this.noiseBuffer; bed.loop = true;
     const bedLP = this.ctx.createBiquadFilter();
-    bedLP.type = 'lowpass'; bedLP.frequency.value = 620; bedLP.Q.value = 0.5;
-    const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.15;
+    bedLP.type = 'lowpass'; bedLP.frequency.value = 850; bedLP.Q.value = 0.5;
+    const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.08;
     const lfo = this.ctx.createOscillator(); lfo.frequency.value = 0.16;
-    const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.055;
+    const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.025;
     lfo.connect(lfoG); lfoG.connect(bedGain.gain);
     bed.connect(bedLP); bedLP.connect(bedGain); bedGain.connect(out);
     bed.start(); lfo.start();
@@ -198,19 +199,19 @@ class AudioEngine {
       src.buffer = this.noiseBuffer;
       const bp = this.ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.value = 1400 + Math.random() * 2800;
-      bp.Q.value = 1.1;
+      bp.frequency.value = 1600 + Math.random() * 2800;
+      bp.Q.value = 1.2;
       const g = this.ctx.createGain();
-      g.gain.setValueAtTime(0.04 + Math.random() * 0.08, this.now);
-      g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.03 + Math.random() * 0.045);
+      g.gain.setValueAtTime(0.05 + Math.random() * 0.08, this.now);
+      g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.025 + Math.random() * 0.04);
       src.connect(bp); bp.connect(g); g.connect(out);
-      src.start(this.now, Math.random() * 0.9, 0.1);
+      src.start(this.now, Math.random() * 0.9, 0.08);
       cluster--;
       let delay;
       if (cluster <= 0) {
-        cluster = Math.random() < 0.78 ? 2 + Math.floor(Math.random() * 5) : 0;
-        delay = cluster > 0 ? 25 + Math.random() * 55 : 150 + Math.random() * 350;
-      } else delay = 25 + Math.random() * 55;
+        cluster = Math.random() < 0.85 ? 2 + Math.floor(Math.random() * 5) : 0;
+        delay = cluster > 0 ? 20 + Math.random() * 50 : 120 + Math.random() * 300;
+      } else delay = 20 + Math.random() * 50;
       timer = setTimeout(drop, delay);
     };
     cluster = 3; drop();
@@ -236,20 +237,31 @@ class AudioEngine {
     const bedGain = this.ctx.createGain(); bedGain.gain.value = 0.05;
     bed.connect(bedLP); bedLP.connect(bedGain); bedGain.connect(out);
     bed.start();
-    // 咕嘟：150-420Hz 带通簇，频率在簇间上下蠕动
+    // 咕嘟：低频成簇 + 正弦下滑音"啵"（液体水泡的特征是音高下滑，纯噪声不像）
     let alive = true, timer = null, cluster = 0, f = 260;
     const blip = () => {
       if (!alive) return;
-      f = Math.min(420, Math.max(150, f + (Math.random() - 0.5) * 120));
+      f = Math.min(400, Math.max(160, f + (Math.random() - 0.5) * 100));
+      // 液体啵声：正弦从 ~2f 滑到 ~f
+      const o = this.ctx.createOscillator(); o.type = 'sine';
+      const f0 = f * (1.6 + Math.random() * 0.6);
+      o.frequency.setValueAtTime(f0, this.now);
+      o.frequency.exponentialRampToValueAtTime(Math.max(60, f0 * 0.55), this.now + 0.12);
+      const og = this.ctx.createGain();
+      og.gain.setValueAtTime(0.05 + Math.random() * 0.07, this.now);
+      og.gain.exponentialRampToValueAtTime(0.001, this.now + 0.1 + Math.random() * 0.08);
+      o.connect(og); og.connect(out);
+      o.start(); o.stop(this.now + 0.25);
+      // 伴随的气泡噪声
       const src = this.ctx.createBufferSource();
       src.buffer = this.noiseBuffer;
       const bp = this.ctx.createBiquadFilter();
-      bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 3.5;
+      bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 2.5;
       const g = this.ctx.createGain();
-      g.gain.setValueAtTime(0.06 + Math.random() * 0.1, this.now);
-      g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.08 + Math.random() * 0.12);
+      g.gain.setValueAtTime(0.03 + Math.random() * 0.05, this.now);
+      g.gain.exponentialRampToValueAtTime(0.001, this.now + 0.07 + Math.random() * 0.1);
       src.connect(bp); bp.connect(g); g.connect(out);
-      src.start(this.now, Math.random() * 0.8, 0.25);
+      src.start(this.now, Math.random() * 0.8, 0.2);
       cluster--;
       let delay;
       if (cluster <= 0) {
