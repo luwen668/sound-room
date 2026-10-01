@@ -11,13 +11,15 @@ class AudioEngine {
     this.buffers = {};
     this.tracks = {};   // name -> { gain, stop(), baseVol }
     this._noise = null;
+    this.muted = false; // 静音总开关（视觉不变，只断声音）
+    this._base = 0.9;   // 非静音时的主音量基准
   }
 
   ensure() {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.9;
+      this.master.gain.value = this.muted ? 0.0001 : this._base;
       this.master.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
@@ -58,8 +60,20 @@ class AudioEngine {
     g.linearRampToValueAtTime(Math.max(v, 0.0001), this.now + ramp);
   }
 
-  /* 主音量（睡眠定时渐弱用） */
+  /* 主音量基准（睡眠定时渐弱用）；静音时只记基准不出声 */
   setMaster(v, ramp = 0.5) {
+    this._base = v;
+    if (this.muted) return;
+    this._applyMaster(v, ramp);
+  }
+
+  /* 静音总开关 */
+  setMuted(m, ramp = 0.3) {
+    this.muted = m;
+    this._applyMaster(m ? 0 : this._base, ramp);
+  }
+
+  _applyMaster(v, ramp = 0.5) {
     if (!this.ctx) return;
     const g = this.master.gain;
     g.cancelScheduledValues(this.now);

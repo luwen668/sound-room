@@ -22,6 +22,13 @@ body {
   font-size: 14px; color: #7B8CDE; letter-spacing: .1em;
 }
 .top-right { display: flex; align-items: center; gap: 10px; }
+#muteBtn {
+  background: transparent; border: none;
+  font-size: 16px; line-height: 1;
+  padding: 4px 6px; cursor: pointer;
+  opacity: .85; transition: opacity .2s, transform .15s;
+}
+#muteBtn:hover { opacity: 1; transform: scale(1.1); }
 #viewToggle {
   background: transparent; color: #9BA0BC;
   border: 1px solid rgba(123,140,222,.35); border-radius: 16px;

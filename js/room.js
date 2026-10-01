@@ -515,20 +515,33 @@ function loadState() {
 }
 
 /* ---------- 分享 ---------- */
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2600);
+}
+
 function shareRoom() {
   saveState();
   const url = location.href;
-  const toast = document.getElementById('toast');
-  const show = msg => {
-    toast.textContent = msg;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2600);
-  };
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(url)
-      .then(() => show('🔗 链接已复制，发给朋友吧'))
-      .catch(() => show(url));
-  } else show(url);
+      .then(() => showToast('🔗 链接已复制，发给朋友吧'))
+      .catch(() => showToast(url));
+  } else showToast(url);
+}
+
+/* ---------- 静音总开关（只断声音，房间视觉状态不变） ---------- */
+function toggleMute() {
+  engine.setMuted(!engine.muted);
+  try { localStorage.setItem('sound-room-muted', engine.muted ? '1' : '0'); } catch (e) {}
+  document.getElementById('muteBtn').textContent = engine.muted ? '🔇' : '🔊';
+  showToast(engine.muted ? '🔇 已静音' : '🔊 声音开启');
+}
+function loadMute() {
+  try { engine.muted = localStorage.getItem('sound-room-muted') === '1'; } catch (e) {}
+  document.getElementById('muteBtn').textContent = engine.muted ? '🔇' : '🔊';
 }
 
 /* ---------- 睡眠定时 ---------- */
@@ -1085,11 +1098,28 @@ if (qp.get('selftest') === '7') {
   }, 800));
 }
 
+// M5b 自测：?selftest=8 → 静音总开关：状态、基准保留、ensure 后生效
+if (qp.get('selftest') === '8') {
+  Promise.all(loadPromises).then(() => setTimeout(() => {
+    document.getElementById('muteBtn').click();
+    const muted = engine.muted;
+    const baseKept = engine._base === 0.9;
+    const ls = localStorage.getItem('sound-room-muted');
+    engine.ensure();  // 静音状态下创建 ctx，主音量应立即为 0
+    const silent = engine.master.gain.value <= 0.001;
+    document.getElementById('muteBtn').click();  // 恢复
+    const restored = !engine.muted;
+    document.title = 'SELFTEST8 ' + JSON.stringify({ muted, baseKept, ls, silent, restored });
+  }, 800));
+}
+
 Promise.all(loadPromises).then(() => {
   buildMixer();
   syncMixer();
   document.getElementById('shareBtn').addEventListener('click', shareRoom);
   document.getElementById('viewToggle').addEventListener('click', toggleViewMode);
+  document.getElementById('muteBtn').addEventListener('click', toggleMute);
+  loadMute();
   applyViewMode();
   window.addEventListener('resize', () => { const lim = panLimits();
     pan.x = Math.min(lim.x, Math.max(-lim.x, pan.x));
