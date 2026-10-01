@@ -66,7 +66,7 @@ const props = [
   { k: 'carpet',     i: 2,    j: 2 },
   { k: 'roundTable', i: 3.1,  j: 2.1, id: 'tea' },
   { k: 'bookStand',  i: 3.6,  j: 0.8 },
-  { k: 'candleD',    i: 4,    j: -0.15, id: 'candle' },
+  { k: 'candleD',    i: 4.2,  j: 1.6,  id: 'candle' },   // 右侧墙边，远离落地钟避免误点
   { k: 'candle',     i: 0.6,  j: 3.6 },
   { k: 'clock',      i: 4.35, j: 0.35, id: 'clock' },  // 自绘落地钟
   { k: 'cat',        i: 2.3,  j: 1.95, id: 'cat' },    // 自绘猫
@@ -80,7 +80,7 @@ const P = {
   tea:    iso(3.1, 2.1),
   clock:  iso(4.35, 0.35),
   cat:    iso(2.3, 1.95),
-  candleD:iso(4, -0.15),
+  candleD:iso(4.2, 1.6),
   candle: iso(0.6, 3.6),
 };
 const RAIN_RECT = { x: P.window.x - 50, y: P.window.y - 218, w: 100, h: 145 };
@@ -528,7 +528,7 @@ const OBJECTS = [
   { id: 'window', name: '木窗',   sound: '雨声',     ...P.window, hitW: 150, hitH: 330, hoverY: -330 },
   { id: 'fire',   name: '壁炉',   sound: '柴火噼啪', ...P.fire,   hitW: 170, hitH: 300, hoverY: -300 },
   { id: 'tea',    name: '茶炉',   sound: '沸水咕嘟', ...P.tea,    hitW: 150, hitH: 180, hoverY: -180 },
-  { id: 'candle', name: '烛台',   sound: '烛火轻响', ...P.candleD,hitW: 130, hitH: 210, hoverY: -210 },
+  { id: 'candle', name: '烛台',   sound: '烛火轻响', ...P.candleD,hitW: 110, hitH: 210, hoverY: -210 },
   { id: 'clock',  name: '落地钟', sound: '滴答',     ...P.clock, hitW: 90,  hitH: 260, hoverY: -260 },
   { id: 'cat',    name: '猫',     sound: '呼噜',     ...P.cat,    hitW: 110, hitH: 70,  hoverY: -70 },
 ];
@@ -691,15 +691,25 @@ function objAt(mx, my) {
 
 /* 触摸：单指拖动 = 巡视房间；轻点 = 点击物件 */
 let _touchStart = null, _touchMoved = false, _lastTouchEnd = 0;
+/* 提示标签定位：钳制在视口内，并避开展开的混音台（防手机端被遮住） */
+function placeTip(x, y) {
+  tip.style.display = 'block';
+  const tw = tip.offsetWidth || 120, th = tip.offsetHeight || 30;
+  let left = Math.min(x + 14, window.innerWidth - tw - 8);
+  let top = y - 10;
+  const mx = document.getElementById('mixer');
+  const mixerTop = mx.classList.contains('open') ? mx.getBoundingClientRect().top : Infinity;
+  top = Math.min(top, mixerTop - th - 8);
+  tip.style.left = Math.max(8, left) + 'px';
+  tip.style.top = Math.max(8, top) + 'px';
+}
 function showTipFor(o, clientX, clientY) {
   const tr = trackByObj(o.id);
   const on = tr && state.on[tr.key];
-  tip.style.display = 'block';
-  tip.style.left = (clientX + 14) + 'px';
-  tip.style.top = (clientY - 10) + 'px';
   tip.innerHTML = on
     ? `${o.name} · ${o.sound} <em>开</em>`
     : `${o.name} · ${o.sound}`;
+  placeTip(clientX, clientY);
 }
 function tapAt(clientX, clientY) {
   const r = cvsFx.getBoundingClientRect();
@@ -759,12 +769,10 @@ cvsFx.addEventListener('mousemove', e => {
   if (o) {
     const tr = trackByObj(o.id);
     const on = tr && state.on[tr.key];
-    tip.style.display = 'block';
-    tip.style.left = (e.clientX + 14) + 'px';
-    tip.style.top = (e.clientY - 10) + 'px';
     tip.innerHTML = on
       ? `${o.name} · ${o.sound} <em>开（滚轮调音量）</em>`
       : `${o.name} · ${o.sound}`;
+    placeTip(e.clientX, e.clientY);
   } else tip.style.display = 'none';
 });
 
