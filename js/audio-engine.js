@@ -368,23 +368,29 @@ class AudioEngine {
     out.connect(this.master);
     this._register(name, out, () => {}, volume);
     this._pageBufs = null;
-    const files = ['01', '02', '03', '04'];
+    const files = ['01', '02', '03', '04', '05'];
     Promise.all(files.map(n => this.loadBuffer('page' + n, `assets/audio/page_flip_${n}.m4a`)))
       .then(buffs => { this._pageBufs = buffs; })
       .catch(() => {});
   }
 
-  /* 翻一页：随机挑一个样本，经翻书声轨的增益输出（音量滑杆统管） */
+  /* 翻一页：随机挑一个样本，轻微变调，经翻书声轨的增益输出（音量滑杆统管）。
+     15% 概率连翻两页（第二次轻一点、稍晚一点，更像真实读书） */
   pageFlip() {
     const t = this.tracks.page;
     if (!t || !this._pageBufs || !this._pageBufs.length) return;
-    const buf = this._pageBufs[Math.floor(Math.random() * this._pageBufs.length)];
-    const src = this.ctx.createBufferSource();
-    src.buffer = buf;
-    const g = this.ctx.createGain();
-    g.gain.value = 0.7 + Math.random() * 0.4;
-    src.connect(g); g.connect(t.gain);
-    src.start();
+    const play = (when, gainMul) => {
+      const buf = this._pageBufs[Math.floor(Math.random() * this._pageBufs.length)];
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = 0.94 + Math.random() * 0.12;
+      const g = this.ctx.createGain();
+      g.gain.value = (0.9 + Math.random() * 0.4) * gainMul;
+      src.connect(g); g.connect(t.gain);
+      src.start(when);
+    };
+    play(this.now, 1);
+    if (Math.random() < 0.15) play(this.now + 0.35 + Math.random() * 0.2, 0.7);
   }
 }
 

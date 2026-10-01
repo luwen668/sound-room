@@ -861,7 +861,7 @@ function startTrack(key) {
     case 'cat':    engine.startPurr('cat', { volume: v }); break;
     case 'tick':   engine.startTick('tick', { volume: v }); break;
     case 'chime':  engine.startLoop('chime', 'assets/audio/chime_wind.m4a', { volume: v, fadeIn: 2 }); break;   // CC0 风铃循环
-    case 'page':   engine.startPage('page', { volume: v }); break;
+    case 'page':   engine.startPage('page', { volume: v }); state._pageNext = 0.5; break;   // 0.5s 后先翻一页，立刻给反馈
   }
 }
 function stopTrack(key, fade = 1.5) { engine.fadeOut(key, fade); }
@@ -1181,7 +1181,7 @@ function loop(now) {
   if (state.on.page) {
     state._pageNext -= dt;
     if (state._pageNext <= 0) {
-      state._pageNext = 6 + Math.random() * 9;
+    state._pageNext = 2.5 + Math.random() * 4.5;   // 之后每 2.5~7 秒翻一页
       state.pageFlip = 0;
       engine.pageFlip();
     }

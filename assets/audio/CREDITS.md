@@ -8,7 +8,7 @@
 | fire_loop.m4a | Fireplace Sound loop（由 WAV 转码） | PagDev | https://opengameart.org/content/fireplace-sound-loop | CC0 |
 | tea_boil.m4a | Boiling water loops · cooking_without_cover（+6dB 增益转码） | TinyWorlds | https://opengameart.org/content/boiling-water-loops | CC0 |
 | chime_wind.m4a | Wind Chimes · loop 2（+3dB 增益转码） | pmiller | https://opengameart.org/content/wind-chimes | CC0 |
-| page_flip_01~04.m4a | Page Flips（page_flip_01/02/03 + soft_01） | Wandering Door Games | https://opengameart.org/content/page-flips | CC-BY-SA 4.0 |
+| page_flip_01~05.m4a | Book Flip Sounds（BookFlip 1/5/8/10/13 挑选转码：5.5kHz 低通柔化 + RMS -24dB 归一 + 限幅 + 首尾微淡入出） | Voltiment555 | https://opengameart.org/content/book-flip-sounds | CC0 |
 
 ## 合成音（非素材，代码实时生成）
 
