@@ -7,6 +7,8 @@
 | rain_loop.mp3 | Rain in the Gutter Loop | Ogrebane | https://opengameart.org/content/rain-gutter-loop | CC0 |
 | fire_loop.m4a | Fireplace Sound loop（由 WAV 转码） | PagDev | https://opengameart.org/content/fireplace-sound-loop | CC0 |
 | tea_boil.m4a | Boiling water loops · cooking_without_cover（+6dB 增益转码） | TinyWorlds | https://opengameart.org/content/boiling-water-loops | CC0 |
+| chime_wind.m4a | Wind Chimes · loop 2（+3dB 增益转码） | pmiller | https://opengameart.org/content/wind-chimes | CC0 |
+| page_flip_01~04.m4a | Page Flips（page_flip_01/02/03 + soft_01） | Wandering Door Games | https://opengameart.org/content/page-flips | CC-BY-SA 4.0 |
 
 ## 合成音（非素材，代码实时生成）
 

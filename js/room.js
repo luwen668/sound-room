@@ -62,6 +62,8 @@ const props = [
   { k: 'candle',     i: 1.5,  j: 4.2, s: 1.35 },
   { k: 'clock',      i: 4.35, j: 0.35, id: 'clock' },  // 自绘落地钟
   { k: 'cat',        i: 2.3,  j: 1.95, id: 'cat' },    // 自绘猫
+  { k: 'chime',      i: 2.65, j: -0.35, id: 'chime' }, // 自绘风铃（挂窗边）
+  { k: 'page',       i: 1,    j: 3, id: 'page' },      // 自绘摊开的书（长桌上）
 ];
 const scene = [...walls, ...props].sort((a, b) => (a.i + a.j) - (b.i + b.j));
 
@@ -74,6 +76,8 @@ const P = {
   cat:    iso(2.3, 1.95),
   candleD:iso(4.2, 1.6),
   candle: iso(1.5, 4.2),
+  chime:  iso(2.65, -0.35),
+  page:   iso(1, 3),
 };
   const RAIN_RECT = { x: P.window.x - 32, y: P.window.y - 136, w: 64, h: 92 };
 
@@ -85,18 +89,24 @@ const TRACKS = [
   { key: 'candle', name: '烛火轻响', obj: 'candle' },
   { key: 'cat',    name: '呼噜',     obj: 'cat' },
   { key: 'tick',   name: '钟摆滴答', obj: 'clock' },
+  { key: 'chime',  name: '风铃',     obj: 'chime' },
+  { key: 'page',   name: '翻书',     obj: 'page' },
 ];
 const trackByKey = k => TRACKS.find(t => t.key === k);
 const trackByObj = o => TRACKS.find(t => t.obj === o);
 
 /* ---------- 状态 ---------- */
 const state = {
-  on:   { rain: false, fire: true, cat: false, tick: false, tea: false, candle: false },
-  vols: { rain: 0.45, fire: 0.55, cat: 0.55, tick: 0.3, tea: 0.4, candle: 0.35 },
+  on:   { rain: false, fire: true, cat: false, tick: false, tea: false, candle: false, chime: false, page: false },
+  vols: { rain: 0.45, fire: 0.55, cat: 0.55, tick: 0.3, tea: 0.4, candle: 0.35, chime: 0.5, page: 0.45 },
   viewMode: 'fit',  // fit 整屋适配 / pan 放大巡视
   rainLevel: 0,   // 0-1 雨强度（粒子/音量插值）
   teaLevel: 0,    // 茶炉蒸汽强度
   candleLevel: 0, // 烛火强度
+  chimeLevel: 0,  // 风铃摆动强度
+  pageLevel: 0,   // 翻书强度
+  pageFlip: 1,    // 翻页动画进度 0-1（1=静止）
+  _pageNext: 0,   // 距下一次翻页（秒）
   flash: 0,       // 闪电亮度 0-1
   shake: 0,       // 窗玻璃震动 0-1
   nextThunderAt: 0,
@@ -210,6 +220,81 @@ function drawCat(ctx, x, y, t, purring) {
     ctx.fillStyle = 'rgba(200,205,230,.85)';
     ctx.font = '600 11px Georgia';
     ctx.fillText('z', -34, -42 - (t % 1) * 8);
+  }
+  ctx.restore();
+}
+
+/* ---------- 自绘：风铃（窗边悬挂，开启时随风摇摆） ---------- */
+function drawChime(ctx, x, y, t, lvl) {
+  const sway = Math.sin(t * 1.1) * (1 + lvl * 3.5) + Math.sin(t * 2.3) * lvl * 1.2;
+  ctx.save();
+  ctx.translate(x, y);
+  // 挂绳
+  ctx.strokeStyle = '#8A8168'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, -165); ctx.lineTo(sway * 0.3, -118); ctx.stroke();
+  // 顶盘
+  ctx.fillStyle = '#C9A45C';
+  ctx.beginPath(); ctx.ellipse(sway * 0.3, -118, 15, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  // 四根金属管（长短错开）
+  const tubes = [[-11, 40], [-3.5, 52], [4, 46], [11, 36]];
+  tubes.forEach(([dx, len], k) => {
+    const sw = sway * (0.55 + k * 0.16);
+    ctx.strokeStyle = '#D8C89A'; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sw * 0.3 + dx, -114); ctx.lineTo(sw + dx, -114 + len); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,250,230,.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sw * 0.3 + dx - 1, -112); ctx.lineTo(sw + dx - 1, -112 + len); ctx.stroke();
+  });
+  // 中央风锤（开启时摆动撞管）
+  const pl = 62 + Math.sin(t * 1.7) * 3 * lvl;
+  ctx.strokeStyle = '#A08B60'; ctx.lineWidth = 1.1;
+  ctx.beginPath(); ctx.moveTo(sway * 0.3, -116); ctx.lineTo(sway * 1.1, -116 + pl); ctx.stroke();
+  ctx.fillStyle = '#C9A45C';
+  ctx.beginPath(); ctx.arc(sway * 1.1, -116 + pl, 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- 自绘：长桌上的摊开的书（flip=翻页进度 0-1） ---------- */
+function drawPageBook(ctx, x, y, flip, lvl) {
+  ctx.save();
+  ctx.translate(x, y);
+  // 书上的一层暖光呼吸（开启时）
+  if (lvl > 0.02) {
+    const g = ctx.createRadialGradient(0, -4, 2, 0, -4, 34);
+    g.addColorStop(0, `rgba(242,215,150,${0.18 * lvl})`);
+    g.addColorStop(1, 'rgba(242,215,150,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, -2, 34, 12, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // 影
+  ctx.fillStyle = 'rgba(20,20,30,.28)';
+  ctx.beginPath(); ctx.ellipse(0, 3, 28, 7, 0, 0, Math.PI * 2); ctx.fill();
+  // 摊开的两页
+  ctx.fillStyle = '#EFE5CB';
+  ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(0, -6); ctx.lineTo(0, 4); ctx.lineTo(-26, 9); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(0, -6); ctx.lineTo(0, 4); ctx.lineTo(26, 9); ctx.closePath(); ctx.fill();
+  // 书脊与页线
+  ctx.strokeStyle = '#B3A281'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 4); ctx.stroke();
+  [-19, -12].forEach(dx => {
+    ctx.beginPath(); ctx.moveTo(dx, -4.6 + (dx + 26) * 0.23); ctx.lineTo(dx, 8 - (dx + 26) * 0.19); ctx.stroke();
+  });
+  [8, 15].forEach(dx => {
+    ctx.beginPath(); ctx.moveTo(dx, -6 + dx * 0.1); ctx.lineTo(dx, 4 + dx * 0.19); ctx.stroke();
+  });
+  // 翻起的页（flip 0→1）
+  if (flip < 1) {
+    const a = flip * Math.PI;
+    const w = Math.cos(a) * 26;
+    const lift = Math.sin(a);
+    ctx.fillStyle = '#F6EEDB';
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(w, -6 - lift * 7);
+    ctx.lineTo(w, 4 + lift * 5);
+    ctx.lineTo(0, 4);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(179,162,129,.7)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(w * 0.55, -6 - lift * 6 + 1); ctx.lineTo(w * 0.55, 3 + lift * 4); ctx.stroke();
   }
   ctx.restore();
 }
@@ -406,6 +491,8 @@ function drawScene() {
     const p = iso(o.i, o.j);
     if (o.k === 'cat') { drawCat(ctxS, p.x, p.y, performance.now() / 1000, state.on.cat); continue; }
     if (o.k === 'clock') { drawClock(ctxS, p.x, p.y, performance.now() / 1000); continue; }
+    if (o.k === 'chime') { drawChime(ctxS, p.x, p.y, performance.now() / 1000, state.chimeLevel); continue; }
+    if (o.k === 'page') { drawPageBook(ctxS, p.x, p.y - 80, state.pageFlip, state.pageLevel); continue; }
     const im = img[o.k];
     if (im) {
       const sc = o.s || 1;  // 家具类放大（底部锚点不变，只长个儿）
@@ -597,6 +684,8 @@ function drawLight() {
   punch(P.tea.x, P.tea.y - 70, 60, 0.25 + 0.2 * state.teaLevel);
   punch(P.cat.x, P.cat.y - 12, 55, 0.3);
   punch(P.window.x, P.window.y - 100, 95, 0.25);           // 月光
+  punch(P.chime.x, P.chime.y - 130, 42 + 22 * state.chimeLevel, 0.1 + 0.22 * state.chimeLevel);  // 风铃冷光
+  punch(P.page.x, P.page.y - 88, 45, 0.08 + 0.18 * state.pageLevel);                             // 书页暖光
   punch(P.clock.x, P.clock.y - 78, 45, 0.2);
   // 闪电：整屏泛蓝白（在打孔之后盖，才能提亮所有区域）
   if (state.flash > 0.02) {
@@ -618,7 +707,7 @@ function scheduleThunder() {
 }
 
 /* ---------- 状态持久化：URL hash 分享 + localStorage 恢复 ---------- */
-const TRACK_ORDER = ['rain', 'fire', 'tea', 'candle', 'cat', 'tick'];
+const TRACK_ORDER = TRACKS.map(t => t.key);   // 8 轨：雨/火/茶/烛/猫/钟/风铃/翻书
 const LS_KEY = 'sound-room-v1';
 
 function encodeState() {
@@ -628,11 +717,13 @@ function encodeState() {
 }
 
 function decodeState(str) {
-  const m = (str || '').match(/mix=(\d{6}),([\d,]+)/);
+  // 兼容旧版 6 位链接：不足 8 轨的部分保持默认
+  const m = (str || '').match(/mix=(\d{6,8}),([\d,]+)/);
   if (!m) return false;
+  const bits = m[1];
   const vols = m[2].split(',').map(Number);
   TRACK_ORDER.forEach((k, i) => {
-    state.on[k] = m[1][i] === '1';
+    if (i < bits.length) state.on[k] = bits[i] === '1';
     if (!Number.isNaN(vols[i])) state.vols[k] = Math.min(1, Math.max(0, vols[i] / 100));
   });
   return true;
@@ -751,6 +842,8 @@ const OBJECTS = [
   { id: 'candle', name: '烛台',   sound: '烛火轻响', ...P.candleD,hitW: 65,  hitH: 120, hoverY: -120 },
   { id: 'clock',  name: '落地钟', sound: '滴答',     ...P.clock, hitW: 55,  hitH: 150, hoverY: -150 },
   { id: 'cat',    name: '猫',     sound: '呼噜',     ...P.cat,    hitW: 85,  hitH: 55,  hoverY: -55 },
+  { id: 'chime',  name: '风铃',   sound: '风铃轻响', ...P.chime,  hitW: 60,  hitH: 120, hoverY: -120 },
+  { id: 'page',   name: '翻书',   sound: '纸页翻动', ...P.page,   hitW: 75,  hitH: 60,  hoverY: -110 },
 ];
 
 /* ---------- 音频接线 ---------- */
@@ -767,14 +860,26 @@ function startTrack(key) {
     case 'candle': engine.startCandle('candle', { volume: v }); break;
     case 'cat':    engine.startPurr('cat', { volume: v }); break;
     case 'tick':   engine.startTick('tick', { volume: v }); break;
+    case 'chime':  engine.startLoop('chime', 'assets/audio/chime_wind.m4a', { volume: v, fadeIn: 2 }); break;   // CC0 风铃循环
+    case 'page':   engine.startPage('page', { volume: v }); break;
   }
 }
 function stopTrack(key, fade = 1.5) { engine.fadeOut(key, fade); }
 
 function toggleTrack(key) {
   engine.ensure();
+  // 风铃依赖开窗：没开窗时风进不来
+  if (key === 'chime' && !state.on.rain && !state.on.chime) {
+    showToast('先点击木窗听雨，风吹进来风铃才会响');
+    return;
+  }
   state.on[key] = !state.on[key];
   state.on[key] ? startTrack(key) : stopTrack(key);
+  // 关窗时风铃随风而止
+  if (key === 'rain' && !state.on.rain && state.on.chime) {
+    state.on.chime = false;
+    stopTrack('chime');
+  }
   syncMixer();
   saveState();
 }
@@ -797,6 +902,7 @@ function applyPreset(name) {
   if (!p) return;
   engine.ensure();
   for (const tr of TRACKS) {
+    if (!(tr.key in p.vols)) continue;   // 配方未涉及的轨道（风铃/翻书）保持不变
     const v = p.vols[tr.key];
     state.vols[tr.key] = v;
     if (v > 0) {
@@ -830,7 +936,14 @@ function buildMixer() {
     slider.addEventListener('input', () => {
       const v = slider.value / 100;
       engine.ensure();
-      if (v > 0 && !state.on[tr.key]) { state.on[tr.key] = true; startTrack(tr.key); }
+      if (v > 0 && !state.on[tr.key]) {
+        if (tr.key === 'chime' && !state.on.rain) {   // 风铃依赖开窗
+          slider.value = 0;
+          showToast('先点击木窗听雨，风吹进来风铃才会响');
+          return;
+        }
+        state.on[tr.key] = true; startTrack(tr.key);
+      }
       if (v === 0 && state.on[tr.key]) { state.on[tr.key] = false; stopTrack(tr.key); }
       setVol(tr.key, v);
       if (state.on[tr.key]) engine.setVolume(tr.key, v, 0.1);
@@ -1062,6 +1175,23 @@ function loop(now) {
   state.rainLevel   = ease(state.rainLevel,   state.on.rain   ? 1 : 0);
   state.teaLevel    = ease(state.teaLevel,    state.on.tea    ? 1 : 0);
   state.candleLevel = ease(state.candleLevel, state.on.candle ? 1 : 0);
+  state.chimeLevel  = ease(state.chimeLevel,  state.on.chime  ? 1 : 0);
+  state.pageLevel   = ease(state.pageLevel,   state.on.page   ? 1 : 0);
+  // 翻书：随机间隔同步触发声音与翻页动画
+  if (state.on.page) {
+    state._pageNext -= dt;
+    if (state._pageNext <= 0) {
+      state._pageNext = 6 + Math.random() * 9;
+      state.pageFlip = 0;
+      engine.pageFlip();
+    }
+  }
+  if (state.pageFlip < 1) state.pageFlip = Math.min(1, state.pageFlip + dt / 0.45);
+  // 风铃摇摆 / 翻页动画需要逐帧重绘静态层（风铃限 15fps，翻页全速）
+  if (state.pageFlip < 1 || (state.on.chime && now - (state._sceneLast || 0) > 66)) {
+    state._sceneLast = now;
+    drawScene();
+  }
   // 雷声调度（仅开窗时）
   if (state.on.rain) {
     if (!state.nextThunderAt) scheduleThunder();
@@ -1091,6 +1221,8 @@ if (qp.get('rain') === '1') { state.on.rain = true; state.rainLevel = 1; }
 if (qp.get('fire') === '0') state.on.fire = false;
 if (qp.get('tea') === '1') { state.on.tea = true; state.teaLevel = 1; }
 if (qp.get('candle') === '1') { state.on.candle = true; state.candleLevel = 1; }
+if (qp.get('chime') === '1') { state.on.chime = true; state.chimeLevel = 1; }
+if (qp.get('page') === '1') { state.on.page = true; state.pageLevel = 1; }
 if (qp.get('sleep')) setTimeout(() => setSleepTimer(parseFloat(qp.get('sleep')) || 0), 1500);
 if (qp.get('thunder') === '1') Promise.all(loadPromises).then(() => setTimeout(triggerThunder, 2000));
 if (qp.get('debug') === '1') {

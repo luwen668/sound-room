@@ -95,8 +95,7 @@ class AudioEngine {
   stopAll(fade = 1.5) { Object.keys(this.tracks).forEach(n => this.fadeOut(n, fade)); }
 
   /* ---------- 素材循环音轨 ---------- */
-  async startLoop(name, url, { volume = 0.7, fadeIn = 2, filterFreq = null } = {}) {
-    this.ensure();
+  async startLoop(name, url, { volume = 0.7, fadeIn = 2, filterFreq = null } = {}) {    this.ensure();
     if (this.tracks[name]) return;
     const buf = await this.loadBuffer(name, url);
     const src = this.ctx.createBufferSource();
@@ -357,6 +356,35 @@ class AudioEngine {
       src.start(this.now, Math.random() * 0.5, 0.03);
     }, 1000);
     this._register(name, out, () => { alive = false; clearInterval(iv); }, volume);
+  }
+
+  /* ---------- 翻书：注册声轨 + 随机播放一页（由房间动画调度，声画同步） ---------- */
+  async startPage(name, { volume = 0.45 } = {}) {
+    this.ensure();
+    if (this.tracks[name]) return;
+    const out = this.ctx.createGain();
+    out.gain.setValueAtTime(0.0001, this.now);
+    out.gain.exponentialRampToValueAtTime(volume, this.now + 2);
+    out.connect(this.master);
+    this._register(name, out, () => {}, volume);
+    this._pageBufs = null;
+    const files = ['01', '02', '03', '04'];
+    Promise.all(files.map(n => this.loadBuffer('page' + n, `assets/audio/page_flip_${n}.m4a`)))
+      .then(buffs => { this._pageBufs = buffs; })
+      .catch(() => {});
+  }
+
+  /* 翻一页：随机挑一个样本，经翻书声轨的增益输出（音量滑杆统管） */
+  pageFlip() {
+    const t = this.tracks.page;
+    if (!t || !this._pageBufs || !this._pageBufs.length) return;
+    const buf = this._pageBufs[Math.floor(Math.random() * this._pageBufs.length)];
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.ctx.createGain();
+    g.gain.value = 0.7 + Math.random() * 0.4;
+    src.connect(g); g.connect(t.gain);
+    src.start();
   }
 }
 
